@@ -1,45 +1,21 @@
 {
-  "version": "1.0.6",
-  "pluginName": "Chrome 小助手",
-  "description": "Chrome 书签搜索",
-  "author": "uTools官方",
-  "homepage": "https://u.tools",
-  "preload": "debug.js",
+  "version": "0.0.0",
+  "pluginName": "Textsend-uTools",
+  "description": "Textsend uTools插件",
+  "author": "Ryan Yim",
+  "homepage": "https://github.com/rmshadows/TextSend_Utool",
+  "main": "index.html",
   "logo": "logo.png",
   "features": [
     {
-      "code": "incognito_mode",
-      "explain": "Chrome 隐身模式打开当前URL",
+      "code": "debug-code",
+      "explain": "debug-explain",
       "cmds": [
-        {
-          "type": "window",
-          "match": {
-            "app": ["Google Chrome.app", "chrome.exe", "chrome", "Google Chrome"]
-          },
-          "label": "隐身模式打开"
-        }
-      ]
-    },
-    {
-      "code": "chrome_bookmarks",
-      "explain": "Chrome 书签搜索",
-      "cmds": [
-        "Chrome BookMarks",
-        "Chrome 书签"
-      ]
-    },
-    {
-      "platform": "darwin",
-      "code": "opened_tabs",
-      "explain": "列出所有 Chrome 窗口已打开的标签页",
-      "cmds": [
-        {
-          "type": "window",
-          "match": {
-            "app": "Google Chrome.app"
-          },
-          "label": "所有标签页"
-        }
+        "debug",
+        "Textsend",
+        "TextSend",
+        "Textsend-uTools",
+        "文字传输"
       ]
     }
   ]
