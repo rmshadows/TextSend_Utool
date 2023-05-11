@@ -4,13 +4,16 @@
   "description": "Textsend uTools插件",
   "author": "Ryan Yim",
   "homepage": "https://github.com/rmshadows/TextSend_Utool",
-  "main": "index.html",
+  "main": "http://127.0.0.1:8888/",
+  "development": {
+    "main": "index.html"
+  },
   "logo": "logo.png",
   "features": [
     {
       "code": "debug-code",
       "explain": "debug-explain",
-      "cmds": [
+      "cmds": [ 
         "debug",
         "Textsend",
         "TextSend",
