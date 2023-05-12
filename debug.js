@@ -2,11 +2,13 @@
 
 
 var m_System = require("./m_System");
-var { JsList } = require("./m_JsList");
+var m_Arrays = require("./m_Arrays");
+var a = [];
+a = m_System.getIPs();
+m_Arrays.printArrays(a);
 
 console.log("Hello World");
 
-// var m_JsList.JsList = new JsList();
 
 
 

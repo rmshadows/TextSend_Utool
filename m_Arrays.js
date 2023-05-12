@@ -3,6 +3,16 @@
  * https://gitee.com/mvc_ydb/data-structure/blob/master/list.js#
  * https://sabe.io/blog/node-syntaxerror-cannot-use-import-statement-outside-a-module
  * https://www.tutorialsandyou.com/javascript/how-to-import-a-class-from-another-file-in-javascript-148.html
+ * 使用：
+ * var m_System = require("./m_System");
+ * var m_Arrays = require("./m_Arrays");
+// var { JsList } = require("./m_Arrays");
+var a = new m_Arrays.JsList();
+var b = [1,2,3,4,5];
+a.setDataSource(b);
+a.insert(0, 0);
+a.print();
+ * 
  */
 class JsList {
     constructor() {
@@ -131,6 +141,19 @@ class JsList {
     }
 }
 
-// module.exports = {
-//     JsList
-// }
+
+function printArrays(array){
+    try {
+        array.forEach(el=>{
+            console.log(el);
+        });
+    } catch (error) {
+        console.error();
+    }
+};
+
+
+module.exports = {
+    JsList,
+    printArrays
+}
