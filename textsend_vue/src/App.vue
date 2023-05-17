@@ -1,47 +1,51 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+  import { NSpace, NButton, NCard,
+  NLayout, NLayoutContent, NLayoutHeader, NLayoutSider, NLayoutFooter } from 'naive-ui'
+  import Qr_component from './components/Qr_component.vue'
+  import Footer_component from './components/Footer_component.vue'
+  import Textsend_component from './components/Textsend_component.vue'
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <n-space vertical size="large">
+    <n-layout embedded content-style="padding: 24px;">
+    <n-card>
+      只要是 看到天边云一朵<br>
+      逐天拢有好心情
+    </n-card>
+  </n-layout>
+    <n-layout has-sider>
+      <n-layout-sider content-style="padding: 24px;">
+        海淀桥
+      </n-layout-sider>
+      <n-layout>
+        <n-layout-header>颐和园路</n-layout-header>
+        <n-layout-content content-style="padding: 24px;">
+          平山道
+        </n-layout-content>
+        <n-layout-footer>成府路</n-layout-footer>
+      </n-layout>
+    </n-layout>
+  </n-space>
+  <n-space justify="space-around" size="large">
+    <n-button>Oops!</n-button>
+    <n-button>Oops!</n-button>
+    <n-button>Oops!</n-button>
+  </n-space>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
+.n-layout-header,
+.n-layout-footer {
+  background: rgba(128, 128, 128, 0.2);
+  padding: 24px;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.n-layout-sider {
+  background: rgba(128, 128, 128, 0.3);
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.n-layout-content {
+  background: rgba(128, 128, 128, 0.4);
 }
 </style>
