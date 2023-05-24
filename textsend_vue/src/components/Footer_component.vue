@@ -1,10 +1,28 @@
 <template>
     <div id="footer-component">
-        <p>Copyright © <span>2023</span> Ryan All Rights Reserved | Made with  by Colorlib & W3layouts. | Template:Industrie & Coiffure.</p>
+        <p>Copyright © 
+            <span>{{ footer_year }}</span>
+            <a href="https://civiccccc.ltd/">
+                Ryan
+            </a> All Rights Reserved | Made with  by Colorlib & W3layouts. | Template:Industrie & Coiffure.</p>
     </div>
 </template>
 
 <script setup>
+
+const Footer_component = {
+    data() {
+        return {
+            footer_year: getFooterYear()
+        }
+    }
+}
+
+const getFooterYear = () => {
+    let d = new Date();
+    console.log("当前年份："+d.getFullYear());
+    return d.getFullYear();
+}
 
 </script>
 

@@ -10,7 +10,7 @@
 
 <style scoped>
 #textsend-component{
-    float: right;
+    float: left;
     background-color: rgb(255, 81, 0);
 }
 </style>
