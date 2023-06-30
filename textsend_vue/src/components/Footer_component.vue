@@ -4,11 +4,26 @@
             <span>{{ footer_year }}</span>
             <a href="https://civiccccc.ltd/">
                 Ryan
-            </a> All Rights Reserved | Made with  by Colorlib & W3layouts. | Template:Industrie & Coiffure.</p>
+            </a> All Rights Reserved</p>
     </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+
+// 响应式状态
+const f_year = reactive({ footer_year: 0 })
+const count = ref(0)
+
+// 更改状态、触发更新的函数
+function increment() {
+  count.value++
+}
+
+// 生命周期钩子
+onMounted(() => {
+  console.log(`计数器初始值为 ${count.value}。`)
+})
 
 const Footer_component = {
     data() {

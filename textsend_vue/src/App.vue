@@ -4,6 +4,14 @@
   import Qr_component from './components/Qr_component.vue'
   import Footer_component from './components/Footer_component.vue'
   import Textsend_component from './components/Textsend_component.vue'
+
+  // const app = createApp({
+  //   data() {
+  //     return {
+  //       count: 0
+  //     }
+  //   }
+  // })
 </script>
 
 <template>
