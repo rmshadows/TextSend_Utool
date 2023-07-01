@@ -9,44 +9,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
-// 响应式状态
-const f_year = reactive({ footer_year: 0 })
-const count = ref(0)
+const footer_year = ref(2000)
 
-// 更改状态、触发更新的函数
-function increment() {
-  count.value++
-}
-
-// 生命周期钩子
-onMounted(() => {
-  console.log(`计数器初始值为 ${count.value}。`)
-})
-
-const Footer_component = {
-    data() {
-        return {
-            footer_year: getFooterYear()
-        }
-    }
-}
-
+/**
+ * 获取当前年份
+ */
 const getFooterYear = () => {
     let d = new Date();
-    console.log("当前年份："+d.getFullYear());
+    // console.log("当前年份："+d.getFullYear());
     return d.getFullYear();
 }
+
+/**
+ * 状态变量
+ * 要放在函数后
+ */
+footer_year.value=getFooterYear()
+
 
 </script>
 
 <style scoped>
 #footer-component{
+    text-align: center;
+    position: absolute;
+    width: 100%;
+    bottom: 0;
+    height: 50px;
+
+    /* debug */
     background-color: rgb(182, 255, 255);
     border-style:solid;
     border-width:5px;
     border-color: rgb(164, 255, 157);
-    text-align: center;
 }
 </style>
