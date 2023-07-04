@@ -1,5 +1,5 @@
 <template>
-  <div id="footer-component">
+  <div class="footer-component">
     <p>
       Copyright ©
       <span>{{ footer_year }}</span>
@@ -29,14 +29,13 @@ const getFooterYear = () => {
 footer_year.value = getFooterYear();
 </script>
 
-<style scoped>
-#footer-component {
-  text-align: center;
-  position: absolute;
+<style scoped lang="less">
+.footer-component {
   width: 100%;
-  bottom: 0;
   height: 70px;
   font-size: 20px;
+  display: flex;
+  justify-content: center;
 
   /* debug */
   background-color: rgb(182, 255, 255);

@@ -6,7 +6,7 @@
 
 <script setup></script>
 
-<style scoped>
+<style scoped lang="less">
 .textsend-component {
 }
 </style>

@@ -6,14 +6,13 @@
 
 <script setup></script>
 
-<style scoped>
+<style scoped lang="less">
 .qr-component {
   height: 100%;
   width: 100%;
-}
-
-.qr-code-img {
-  height: 100%;
-  width: 100%;
+  .qr-code-img {
+    height: 100%;
+    width: 100%;
+  }
 }
 </style>
