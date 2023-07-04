@@ -31,6 +31,8 @@ export default defineComponent({
 .qr-component {
   height: 100%;
   width: 100%;
+  user-select: none;
+  
   .qr-code-img {
     height: 100%;
     width: 100%;

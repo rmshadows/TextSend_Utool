@@ -36,6 +36,7 @@ footer_year.value = getFooterYear();
   font-size: 20px;
   display: flex;
   justify-content: center;
+  user-select: none;
 
   /* debug */
   background-color: rgb(182, 255, 255);

@@ -14,6 +14,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  user-select: none;
 
   background-color: rgb(182, 255, 255);
 
