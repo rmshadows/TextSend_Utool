@@ -1,7 +1,7 @@
 <template>
   <div class="textsend-body">
     <div class="textsend-body-left">
-      <QrComponent />
+      <QrComponent @img-click="handleClickInner" />
     </div>
     <div class="textsend-body-right">
       <TextSendComponent />
@@ -12,6 +12,10 @@
 <script setup>
 import QrComponent from "./Qr_component.vue";
 import TextSendComponent from "./Textsend_component.vue";
+
+const handleClickInner = (value) => {
+  console.log("父组件接收到了img-click, 值为", value);
+};
 </script>
 
 <style scoped lang="less">
