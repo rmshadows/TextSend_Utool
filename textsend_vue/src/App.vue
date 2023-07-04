@@ -9,6 +9,7 @@
 //   NLayoutSider,
 //   NLayoutFooter,
 // } from "naive-ui";
+import HeaderComponent from '@/components/HeaderComponent.vue';
 import QrComponent from "./components/Qr_component.vue";
 import FooterComponent from "./components/Footer_component.vue";
 import TextsendComponent from "./components/Textsend_component.vue";
@@ -16,7 +17,7 @@ import TextsendComponent from "./components/Textsend_component.vue";
 
 <template>
   <div class="textsend">
-    <div class="textsend-title">Textsend Utools</div>
+    <HeaderComponent />
     <div class="textsend-body">
       <div class="textsend-body-left">
         <QrComponent />
@@ -34,16 +35,7 @@ import TextsendComponent from "./components/Textsend_component.vue";
   width: 100%;
   height: 100vh;
   background-color: rgb(242, 242, 242);
-  .textsend-title {
-    /* position: absolute; */
-    width: 100%;
-    background-color: rgb(186, 255, 255);
-    height: 80px;
-    font-size: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+  
   .textsend-body {
     /* clear: both; */
     width: 100%;
