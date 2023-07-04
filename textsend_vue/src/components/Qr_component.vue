@@ -17,7 +17,7 @@ export default defineComponent({
 
     const handleClickImg = () => {
       console.log("点击里面的图片");
-      // 向父组件出发img-click
+      // 向父组件发出img-click
       context.emit("img-click", 111);
     };
     return {
