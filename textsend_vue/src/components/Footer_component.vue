@@ -3,7 +3,8 @@
     <p>
       Copyright ©
       <span>{{ footer_year }}</span>
-      <a href="https://civiccccc.ltd/"> Ryan </a> All Rights Reserved
+      <a href="https://civiccccc.ltd/"> Ryan </a> All Rights Reserved. | 
+      <a href="https://github.com/rmshadows/TextSend_Utool">Source</a>
     </p>
   </div>
 </template>

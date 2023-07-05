@@ -15,6 +15,7 @@ import FooterComponent from "./components/Footer_component.vue";
 </script>
 
 <template>
+  <!-- 一个template一个元素 -->
   <div class="textsend">
     <HeaderComponent />
     <MainBodyComponent />
