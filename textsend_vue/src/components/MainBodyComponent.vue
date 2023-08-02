@@ -23,14 +23,18 @@ const handleClickInner = (value) => {
   /* clear: both; */
   width: 100%;
   display: flex;
+  // Viewport Height，视窗高度，1vh=视窗高度的1%
+  // 百分百高 - 80px -70px (header和footer的高度)
   height: calc((100vh - 80px - 70px));
 
   .textsend-body-left {
+    // 宽度 = 高度
     width: calc((100vh - 80px - 70px));
     height: 100%;
     background-color: rgb(207, 255, 192);
   }
   .textsend-body-right {
+    // 宽度 = 百分比宽度 - 左边占用的宽度
     width: calc(100vw - (100vh - 80px - 70px));
     height: 100%;
     background-color: rgb(250, 255, 153);
