@@ -1,14 +1,4 @@
 <script setup>
-// import {
-//   NSpace,
-//   NButton,
-//   NCard,
-//   NLayout,
-//   NLayoutContent,
-//   NLayoutHeader,
-//   NLayoutSider,
-//   NLayoutFooter,
-// } from "naive-ui";
 import HeaderComponent from "@/components/HeaderComponent.vue";
 import MainBodyComponent from "@/components/MainBodyComponent.vue";
 import FooterComponent from "./components/Footer_component.vue";
