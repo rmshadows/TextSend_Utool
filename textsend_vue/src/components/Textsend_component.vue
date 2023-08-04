@@ -3,12 +3,12 @@
     <div class="textsend-inpt">
       <n-space vertical class="tsTextArea">
         a TODO
-        <n-input v-model:value="value" type="textarea" placeholder="基本的 Textarea" />
+        <n-input v-model:value="value" type="textarea" clearable="true" placeholder="基本的 Textarea" />
       </n-space>
     </div>
 
     <div class="textsend-btns">
-      <n-space justify="space-around" size="large">
+      <n-space class="textsend-btns-space" :align="'center'" :justify="'space-around'" size="large">
         <n-select v-model:value="value" :options="ipv4_addr_list" />
         <n-button>Default</n-button>
         <n-button>Default</n-button>
@@ -19,76 +19,68 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import {
-  NSpace,
-  NInput,
-  NButton,
-  NSelect
-} from "naive-ui";
+<script setup>
+import { NSpace, NInput, NButton, NSelect } from "naive-ui";
 import { ref } from "vue";
 
 const value = ref("asd");
 const ipv4_addr_list = ref([
   {
     label: "Everybody's Got Something to Hide Except Me and My Monkey",
-    value: 'song0',
-    disabled: true
+    value: "song0",
+    disabled: true,
   },
   {
-    label: 'Drive My Car',
-    value: 'song1'
+    label: "Drive My Car",
+    value: "song1",
   },
   {
-    label: 'Norwegian Wood',
-    value: 'song2'
+    label: "Norwegian Wood",
+    value: "song2",
   },
   {
     label: "You Won't See",
-    value: 'song3',
-    disabled: true
+    value: "song3",
+    disabled: true,
   },
   {
-    label: 'Nowhere Man',
-    value: 'song4'
+    label: "Nowhere Man",
+    value: "song4",
   },
   {
-    label: 'Think For Yourself',
-    value: 'song5'
+    label: "Think For Yourself",
+    value: "song5",
   },
   {
-    label: 'The Word',
-    value: 'song6'
+    label: "The Word",
+    value: "song6",
   },
   {
-    label: 'Michelle',
-    value: 'song7',
-    disabled: true
+    label: "Michelle",
+    value: "song7",
+    disabled: true,
   },
   {
-    label: 'What goes on',
-    value: 'song8'
+    label: "What goes on",
+    value: "song8",
   },
   {
-    label: 'Girl',
-    value: 'song9'
+    label: "Girl",
+    value: "song9",
   },
   {
     label: "I'm looking through you",
-    value: 'song10'
+    value: "song10",
   },
   {
-    label: 'In My Life',
-    value: 'song11'
+    label: "In My Life",
+    value: "song11",
   },
   {
-    label: 'Wait',
-    value: 'song12'
-  }
+    label: "Wait",
+    value: "song12",
+  },
 ]);
-
-
-
 </script>
 
 <!-- <script>
@@ -223,5 +215,9 @@ export default defineComponent({
 .tsTextArea {
   height: 100%;
   background-color: darkgray;
+}
+
+.textsend-btns-space {
+  height: 100%;
 }
 </style>
