@@ -1,20 +1,45 @@
+<!-- 
+/**
+模式:
+1.服务端（默认）
+获取本机IP
+显示二维码
+组件：
+a.切换模式/发送
+b.选择IP 下拉框 其他，可输入TODO
+c.启动/停止
+d.关于
+e.文本框 内容
+
+2.客户端
+组件：
+a.切换模式/发送
+b.文本框 输入IP链接
+c.连接/断开
+d.关于
+e.文本框 内容
+
+ */
+ -->
 <template>
   <div class="textsend-component">
     <div class="textsend-inpt">
-      <n-space vertical class="tsTextArea">
-        a TODO
-        <n-input v-model:value="value" type="textarea" clearable="true" placeholder="基本的 Textarea" />
-      </n-space>
+      <div class="textsend-inpt-margin">ss
+        <!-- <div class="textsend-inpt-div">
+          <n-input class="textsend-inpt-div-input" v-model:value="value" type="textarea" clearable="true"
+            placeholder="请输入要发送的文字" show-count />
+        </div> -->
+      </div>
     </div>
 
     <div class="textsend-btns">
-      <n-space class="textsend-btns-space" :align="'center'" :justify="'space-around'" size="large">
+      <!-- <n-space class="textsend-btns-space" :align="'center'" :justify="'space-around'" size="large">
         <n-select v-model:value="value" :options="ipv4_addr_list" />
         <n-button>Default</n-button>
         <n-button>Default</n-button>
         <n-button>Default</n-button>
         <n-button>Default</n-button>
-      </n-space>
+      </n-space> -->
     </div>
   </div>
 </template>
@@ -83,141 +108,58 @@ const ipv4_addr_list = ref([
 ]);
 </script>
 
-<!-- <script>
-/**
-模式:
-1.服务端（默认）
-获取本机IP
-显示二维码
-组件：
-a.切换模式/发送
-b.选择IP 下拉框 其他，可输入TODO
-c.启动/停止
-d.关于
-e.文本框 内容
-
-2.客户端
-组件：
-a.切换模式/发送
-b.文本框 输入IP链接
-c.连接/断开
-d.关于
-e.文本框 内容
-
- */
-
-import {
-  NSpace,
-  NInput,
-  NButton,
-  NSelect,
-  NCard,
-  NLayout,
-  NLayoutContent,
-  NLayoutHeader,
-  NLayoutSider,
-  NLayoutFooter,
-} from "naive-ui";
-
-import { defineComponent, ref } from "vue";
-
-export default defineComponent({
-  components: {
-    NButton,
-    NSpace,
-    NInput,
-    NSelect
-  },
-  setup() {
-    return {
-      value: ref(null),
-      options: [
-        {
-          label: "Everybody's Got Something to Hide Except Me and My Monkey",
-          value: "song0",
-          disabled: true
-        },
-        {
-          label: "Drive My Car",
-          value: "song1"
-        },
-        {
-          label: "Norwegian Wood",
-          value: "song2"
-        },
-        {
-          label: "You Won't See",
-          value: "song3",
-          disabled: true
-        },
-        {
-          label: "Nowhere Man",
-          value: "song4"
-        },
-        {
-          label: "Think For Yourself",
-          value: "song5"
-        },
-        {
-          label: "The Word",
-          value: "song6"
-        },
-        {
-          label: "Michelle",
-          value: "song7",
-          disabled: true
-        },
-        {
-          label: "What goes on",
-          value: "song8"
-        },
-        {
-          label: "Girl",
-          value: "song9"
-        },
-        {
-          label: "I'm looking through you",
-          value: "song10"
-        },
-        {
-          label: "In My Life",
-          value: "song11"
-        },
-        {
-          label: "Wait",
-          value: "song12"
-        }
-      ]
-    };
-  }
-});
-</script> -->
 
 <style scoped lang="less">
+// 右半部分功能区(总体)
 .textsend-component {
   height: 100%;
   width: 100%;
-  background-color: bisque;
+  background-color: black;
 }
 
+// 上:输入框部分div 9/10
 .textsend-inpt {
-  width: 100%;
-  background-color: violet;
-  height: 80%;
+  height: 90%;
+  background-color: rgb(255, 154, 22);
 }
 
+// 下:按钮部分div 1/10
 .textsend-btns {
   width: 100%;
-  height: 20%;
-  background-color: coral;
+  height: 10%;
+  background-color: rgb(255, 0, 0);
 }
 
-.tsTextArea {
+// 上:margin
+.textsend-inpt-margin {
+  background-color: aquamarine;
+  // margin-top: 0px;
+  // margin-bottom: 10px;
+  // margin-left: 10px;
+  // margin-right: 10px;
+  height: calc((100vh - 150px)*0.9 - 2*10px);
+}
+
+.textsend-inpt-div {
+  background-color: rgb(255, 11, 227);
+  // width: calc((100vh));
+  // margin: 10px;
+  // height: calc((100vh - 80px - 70px)*0.9 - 20px);
+}
+
+.textsend-inpt-space {
   height: 100%;
-  background-color: darkgray;
+  background-color: rgb(107, 187, 140);
 }
 
+// 输入框
+.textsend-inpt-div-input {
+  height: 100%;
+}
+
+// 按钮部分nspace
 .textsend-btns-space {
   height: 100%;
+  background-color: rgb(42, 211, 8);
 }
 </style>

@@ -32,10 +32,12 @@ export default defineComponent({
   height: 100%;
   width: 100%;
   user-select: none;
+  background-color: blue;
   
   .qr-code-img {
-    height: 100%;
-    width: 100%;
+    height: 80%;
+    width: 80%;
+    padding: 7%;
   }
 }
 </style>
