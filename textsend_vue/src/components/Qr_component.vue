@@ -1,10 +1,12 @@
 <template>
   <div class="qr-component">
-    <img
+    <div class="qr-component-div">
+      <!-- <img
       class="qr-code-img"
       src="../assets/favicon.png"
       @click="handleClickImg"
-    />
+    /> -->
+    </div>
   </div>
 </template>
 
@@ -33,11 +35,17 @@ export default defineComponent({
   width: 100%;
   user-select: none;
   background-color: blue;
-  
-  .qr-code-img {
-    height: 80%;
-    width: 80%;
-    padding: 7%;
-  }
+}
+
+.qr-component-div {
+  // height: 100%;
+  height: calc((100%)); // TODO
+  padding: 40px;
+  background-color: aliceblue;
+}
+
+.qr-code-img {
+  height: 100%;
+  width: 100%;
 }
 </style>

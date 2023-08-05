@@ -24,22 +24,23 @@ e.文本框 内容
 <template>
   <div class="textsend-component">
     <div class="textsend-inpt">
-      <div class="textsend-inpt-margin">ss
-        <!-- <div class="textsend-inpt-div">
+      <div class="textsend-inpt-padding">
+        <!-- 下面div有多大，文本输入框就有多大 -->
+        <div class="textsend-inpt-div">
           <n-input class="textsend-inpt-div-input" v-model:value="value" type="textarea" clearable="true"
             placeholder="请输入要发送的文字" show-count />
-        </div> -->
+        </div>
       </div>
     </div>
 
     <div class="textsend-btns">
-      <!-- <n-space class="textsend-btns-space" :align="'center'" :justify="'space-around'" size="large">
+      <n-space class="textsend-btns-space" :align="'center'" :justify="'space-around'" size="large">
         <n-select v-model:value="value" :options="ipv4_addr_list" />
-        <n-button>Default</n-button>
-        <n-button>Default</n-button>
-        <n-button>Default</n-button>
-        <n-button>Default</n-button>
-      </n-space> -->
+        <n-button size="large" class="textsend-btn">Default</n-button>
+        <n-button size="large" class="textsend-btn">Default</n-button>
+        <n-button size="large" class="textsend-btn">Default</n-button>
+        <n-button size="large" class="textsend-btn">Default</n-button>
+      </n-space>
     </div>
   </div>
 </template>
@@ -130,36 +131,30 @@ const ipv4_addr_list = ref([
   background-color: rgb(255, 0, 0);
 }
 
-// 上:margin
-.textsend-inpt-margin {
-  background-color: aquamarine;
-  // margin-top: 0px;
-  // margin-bottom: 10px;
-  // margin-left: 10px;
-  // margin-right: 10px;
-  height: calc((100vh - 150px)*0.9 - 2*10px);
-}
+// 上:padding
+.textsend-inpt-padding {
+  background-color: aquamarine; 
+  padding: 20px;
+  height: 100%;
+} 
 
 .textsend-inpt-div {
-  background-color: rgb(255, 11, 227);
-  // width: calc((100vh));
-  // margin: 10px;
-  // height: calc((100vh - 80px - 70px)*0.9 - 20px);
-}
-
-.textsend-inpt-space {
-  height: 100%;
-  background-color: rgb(107, 187, 140);
+  height: calc((100% - 2*20px));
 }
 
 // 输入框
 .textsend-inpt-div-input {
   height: 100%;
+  font-size: 33px;
 }
 
 // 按钮部分nspace
 .textsend-btns-space {
   height: 100%;
   background-color: rgb(42, 211, 8);
+}
+
+.textsend-btn{
+  font-size: 20px;
 }
 </style>
