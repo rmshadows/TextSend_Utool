@@ -1,0 +1,22 @@
+{
+  "name": "textsend-utools",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "udev": "./buildVueforuTools.sh"
+  },
+  "dependencies": {
+    "less": "^4.1.3",
+    "list": "^2.0.19",
+    "vue": "^3.3.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "naive-ui": "^2.34.4",
+    "vite": "^4.3.5"
+  }
+}
