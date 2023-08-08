@@ -4,7 +4,7 @@
       <QrComponent @img-click="handleClickInner" />
     </div>
     <div class="textsend-body-right">
-      <TextSendComponent :serverMode="serverMode" />
+      <TextSendComponent />
     </div>
   </div>
 </template>
@@ -12,20 +12,17 @@
 <script setup>
 import QrComponent from "./Qr_component.vue";
 import TextSendComponent from "./Textsend_component.vue";
+import { useStore } from 'vuex';
+import { computed } from "vue";
 
-// 是否是服务端模式
-var serverMode = true;
+const store = useStore()
+// 是否是服务端模式 计算属性中返回某个状态
+let serverMode = computed(() => store.state.mainbodydata.serverMode);
 
-
-
-
-
+// 测试子传父
 const handleClickInner = (value) => {
   console.log("父组件接收到了img-click, 值为", value);
 };
-
-
-
 
 </script>
 

@@ -2,8 +2,8 @@
   <div class="qr-component">
     <n-tooltip trigger="hover">
       <template #trigger>
-        <div class="qr-component-div">
-          <img class="qr-code-img" src="../assets/favicon.png" @click="handleClickImg" />
+        <div class="qr-component-div"> TODO
+          <img class="qr-code-img" src="qrImgSrc" @click="handleClickImg" />
         </div>
       </template>
       二维码将在点击“启动”后重新生成， 请使用Textsend安卓客户端扫码。
@@ -12,14 +12,14 @@
 </template>
 
 <script setup>
-import { NTooltip, NButton } from "naive-ui";
+import { NTooltip } from "naive-ui";
 
-const props = defineProps({
-  foo: String
-})
+// QR二维码图片地址
+let qrImgSrc = "../assets/favicon.png";
 
+// const props = defineProps({});
+// 测试子传父
 const emit = defineEmits(['handleClickImg'])
-
 const handleClickImg = () => {
   console.log("点击里面的图片");
   // 向父组件发出img-click

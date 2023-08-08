@@ -1,7 +1,8 @@
+// store vuex入口文件
 import { createStore, createLogger } from 'vuex'
-import qrdata from './qrdata'
-import textsenddata from './textsenddata'
-import mainbodydata from './mainbodydata'
+import mainbodydata from './modules/mainbodydata'
+import qrdata from './modules/qrdata'
+import textsenddata from './modules/textsenddata'
 
 const debug = process.env.NODE_ENV !== 'production'
 
@@ -14,6 +15,8 @@ const debug = process.env.NODE_ENV !== 'production'
 //     }
 // })
 export default createStore({
+    namespaced: true,
+    // 分成了几个模块，分别导入，但是一个app仅有一个store ！
     modules: {
         qrdata,
         textsenddata,
@@ -22,22 +25,11 @@ export default createStore({
     strict: debug,
     plugins: debug ? [createLogger()] : [],
     state: () => ({
-        user: null
     }),
     getters: {
-        loginStatus: state => !!state.user
     },
     actions: {
-        login({ commit }, { user }) {
-            commit('SET_USER', user)
-        },
-        logout({ commit }) {
-            commit('SET_USER', null)
-        }
     },
     mutations: {
-        SET_USER(state, user) {
-            state.user = user
-        }
     }
 })

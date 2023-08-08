@@ -4,8 +4,8 @@
       <div class="input-padding-div">
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
-          <n-input class="input-textarea" v-model:value="value" type="textarea" clearable="true" placeholder="请输入要发送的文字"
-            show-count />
+          <n-input class="input-textarea" v-model:value="inputText" type="textarea" :clearable=true
+            placeholder="请输入要发送的文字" show-count />
         </div>
       </div>
     </div>
@@ -14,7 +14,7 @@
       <span class="select-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-select v-model:value="ipAddr" :options="ipAddrList" :size="large" :on-update-value="updateIpAddr" />
+            <n-select v-model:value="ipAddr" :options="ipAddrList" size="large" :on-update-value="selectOnUpdateValue" />
           </template>
           请选择本机IP
         </n-tooltip>
@@ -22,8 +22,8 @@
       <span class="input-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-input-number v-model:value="portNumber" :validator="portNumberValidator" :size="large" :max="65535"
-              :placeholder="端口号" :format="portNumberFormator" :on-update-value="updatePort" />
+            <n-input-number v-model:value="portNumber" :validator="portNumberValidator" size="large" :max="65535"
+              placeholder="端口号" :format="portNumberFormator" :on-update-value="updatePort" />
           </template>
           默认是 54300 端口。
         </n-tooltip>
@@ -39,8 +39,9 @@
 <script setup>
 import { NInput, NButton, NSelect, NInputNumber, NTooltip } from "naive-ui";
 import { ref, reactive } from "vue"
+import { useStore } from 'vuex'
 
-// 定义
+// 定义函数
 /**
  * 更新IP地址列表(选择框)
  */
@@ -77,17 +78,27 @@ const setDefaultIpAddr = (array) => {
   return "127.0.0.1";
 }
 
+// 当选择IP内容变动
+const selectOnUpdateValue = () => {
+
+}
+
 /**
  *  定义变量 
  */
-const props = defineProps(['serverMode']);
+// 已使用vuex代替父传子
+// const props = defineProps(['serverMode']);
+// console.log(props.serverMode);
 
-console.log(props.serverMode);
 const emit = defineEmits(['']);
 // 默认值
 const defaultValue = ref(" - ");
 // 默认端口
 let portNumber = ref(54300);
+// 文本框输入的文字
+let inputText = ref("");
+// 使用vuex
+const store = useStore();
 
 // 初始化
 // E:ELECTRON MODE
@@ -139,11 +150,14 @@ const portNumberValidator = (x) => x > 0;
 /**
  * 格式化为整数
  * @param {Number} value 
+ * 返回String ！
  */
 const portNumberFormator = (value) => {
   if ((value % 1) != 0)
-    return parseInt(value); 
-  return value;
+    // 返回字符串会警告
+    // return parseInt(value);
+    return String(value);
+  return String(value);
 }
 
 /**
@@ -162,7 +176,8 @@ const btnLaunch = () => {
 
 }
 const btnChangeMode = () => {
-
+  // 更改模式
+  store.commit('mainbodydata/changeServerMode');
 }
 const btnAbout = () => {
 
