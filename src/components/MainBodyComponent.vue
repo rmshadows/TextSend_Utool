@@ -4,7 +4,7 @@
       <QrComponent @img-click="handleClickInner" />
     </div>
     <div class="textsend-body-right">
-      <TextSendComponent serverMode="serverMode" />
+      <TextSendComponent :serverMode="serverMode" />
     </div>
   </div>
 </template>
@@ -14,7 +14,7 @@ import QrComponent from "./Qr_component.vue";
 import TextSendComponent from "./Textsend_component.vue";
 
 // 是否是服务端模式
-let serverMode = true;
+var serverMode = true;
 
 
 

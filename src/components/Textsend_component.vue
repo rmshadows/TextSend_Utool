@@ -14,8 +14,7 @@
       <span class="select-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-select v-model:value="ipAddr" 
-            :options="ipAddrList" :size="large" :on-update-value="updateIpAddr"/>
+            <n-select v-model:value="ipAddr" :options="ipAddrList" :size="large" :on-update-value="updateIpAddr" />
           </template>
           请选择本机IP
         </n-tooltip>
@@ -29,9 +28,10 @@
           默认是 54300 端口。
         </n-tooltip>
       </span>
-      <n-button size="large" class="button"><span> 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 </span></n-button>
-      <n-button size="large" class="button"><span> 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换 </span></n-button>
-      <n-button size="large" class="button"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
+      <n-button size="large" class="button" @click="btnLaunch"><span> 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 </span></n-button>
+      <n-button size="large" class="button" @click="btnChangeMode"><span> 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换
+        </span></n-button>
+      <n-button size="large" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
     </div>
   </div>
 </template>
@@ -40,12 +40,7 @@
 import { NInput, NButton, NSelect, NInputNumber, NTooltip } from "naive-ui";
 import { ref, reactive } from "vue"
 
-
-const props = defineProps(['serverMode']);
-
-console.log(props.serverMode);
-
-
+// 定义
 /**
  * 更新IP地址列表(选择框)
  */
@@ -82,47 +77,55 @@ const setDefaultIpAddr = (array) => {
   return "127.0.0.1";
 }
 
+/**
+ *  定义变量 
+ */
+const props = defineProps(['serverMode']);
 
+console.log(props.serverMode);
+const emit = defineEmits(['']);
 // 默认值
 const defaultValue = ref(" - ");
 // 默认端口
 let portNumber = ref(54300);
+
+// 初始化
 // E:ELECTRON MODE
 // let ipAddrList = ref(getIpAddrList());
 // V:VUE MODE
 let ipAddrList = ref([
-    {
-        "label": "127.0.0.1",
-        "value": "127.0.0.1"
-    },
-    {
-        "label": "::1",
-        "value": "::1"
-    },
-    {
-        "label": "192.168.30.126",
-        "value": "192.168.30.126"
-    },
-    {
-        "label": "fe80::abf:b8ff:fe3f:2faa",
-        "value": "fe80::abf:b8ff:fe3f:2faa"
-    },
-    {
-        "label": "10.147.18.226",
-        "value": "10.147.18.226"
-    },
-    {
-        "label": "fe80::cc34:2fff:febb:94dc",
-        "value": "fe80::cc34:2fff:febb:94dc"
-    },
-    {
-        "label": "10.147.19.226",
-        "value": "10.147.19.226"
-    },
-    {
-        "label": "fe80::306c:92ff:feca:bd52",
-        "value": "fe80::306c:92ff:feca:bd52"
-    }
+  {
+    "label": "127.0.0.1",
+    "value": "127.0.0.1"
+  },
+  {
+    "label": "::1",
+    "value": "::1"
+  },
+  {
+    "label": "192.168.30.126",
+    "value": "192.168.30.126"
+  },
+  {
+    "label": "fe80::abf:b8ff:fe3f:2faa",
+    "value": "fe80::abf:b8ff:fe3f:2faa"
+  },
+  {
+    "label": "10.147.18.226",
+    "value": "10.147.18.226"
+  },
+  {
+    "label": "fe80::cc34:2fff:febb:94dc",
+    "value": "fe80::cc34:2fff:febb:94dc"
+  },
+  {
+    "label": "10.147.19.226",
+    "value": "10.147.19.226"
+  },
+  {
+    "label": "fe80::306c:92ff:feca:bd52",
+    "value": "fe80::306c:92ff:feca:bd52"
+  }
 ]);
 let ipAddr = ref(setDefaultIpAddr(ipAddrList.value));
 
@@ -139,7 +142,7 @@ const portNumberValidator = (x) => x > 0;
  */
 const portNumberFormator = (value) => {
   if ((value % 1) != 0)
-    return parseInt(value);
+    return parseInt(value); 
   return value;
 }
 
@@ -150,6 +153,20 @@ const portNumberFormator = (value) => {
 const updatePort = (x) => {
   console.log(x);
 };
+
+
+/**
+ * 下面是按钮事件
+ */
+const btnLaunch = () => {
+
+}
+const btnChangeMode = () => {
+
+}
+const btnAbout = () => {
+
+}
 
 </script>
 
