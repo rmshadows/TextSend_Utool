@@ -1,30 +1,36 @@
 <template>
   <div class="textsend-component">
+    <!-- 文本框 -->
     <div class="input">
       <div class="input-padding-div">
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
-          <n-input class="input-textarea" v-model:value="inputText" type="textarea" :clearable=true
-            placeholder="请输入要发送的文字" show-count />
+          <n-input class="input-textarea" :value="inputText" type="textarea" :clearable=true placeholder="请输入要发送的文字"
+            show-count @update-value="inputOnUpdate" :loading="isLoading" />
         </div>
       </div>
     </div>
 
     <div class="buttons">
+      <!-- 选择IP -->
       <span class="select-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-select v-model:value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
+            <n-select :value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
               @update-show="updateIpAddrList" />
           </template>
           请选择本机IP
         </n-tooltip>
       </span>
+      <!-- 选择端口 -->
       <span class="input-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-input-number v-model:value="portNumber" :validator="portNumberValidator" size="large" :max="65535"
-              placeholder="端口号" :format="portNumberFormator" @update-value="inputNumberUpdate" />
+            <n-input-number :value="portNumber" :validator="portNumberValidator" size="large" :max=65535 placeholder="端口号"
+              :format="portNumberFormator" @update-value="inputNumberUpdate" />
+            <!-- 因为已经使用vuex赋值了，所以不能再用v-model，否则：Write operation failed: computed value is readonly -->
+            <!-- <n-input-number v-model:value="portNumber" :validator="portNumberValidator" size="large" :max=65535
+              placeholder="端口号" :format="portNumberFormator" @update-value="inputNumberUpdate" /> -->
           </template>
           默认是 54300 端口。
         </n-tooltip>
@@ -48,14 +54,24 @@
   </div>
 </template>
 
-// TODO:文本框
-
 <script setup>
 import { NInput, NButton, NSelect, NInputNumber, NTooltip, NCard, NModal } from "naive-ui";
 import { ref, reactive, computed } from "vue"
 import { useStore } from 'vuex'
 
 // 定义函数
+// 文本框
+// 更新文本框
+const inputOnUpdate = async (value) => {
+  // 使用Action
+  store.dispatch('textsenddata/setInputValue', value);
+  // store.dispatch('textsenddata/setIsLoadingValue', true)
+  //   .then(() => { store.dispatch('textsenddata/setInputValue', value) })
+  //   .then(() => { store.dispatch('textsenddata/setIsLoadingValue', false) });
+  // 使用Mutation
+  // store.commit("textsenddata/setInputValue", value);
+}
+
 // 选择框
 /**
  * 更新IP地址列表(选择框)
@@ -158,14 +174,13 @@ const inputNumberUpdate = (value) => {
  * 下面是按钮事件
  */
 const btnLaunch = () => {
-
+  store.commit("textsenddata/changeIsLoadingValue");
 }
 const btnChangeMode = () => {
   // 更改模式
   store.commit('mainbodydata/changeServerMode');
 }
 const btnAbout = () => {
-  console.log("asdasd" + showModal);
   showModal.value = true;
 }
 
@@ -179,7 +194,10 @@ const btnAbout = () => {
 const emit = defineEmits(['']);
 // 使用vuex
 const store = useStore();
-
+// 文本框输入的文字
+// let inputText = ref("");
+let inputText = computed(() => store.state.textsenddata.inputText);
+let isLoading = computed(() => store.state.textsenddata.isLoading);
 // IP列表
 let ipAddrList = computed(() => store.state.textsenddata.ipAddrList);
 // IP地址
@@ -187,9 +205,6 @@ let ipAddrList = computed(() => store.state.textsenddata.ipAddrList);
 let ipAddr = computed(() => store.state.textsenddata.ipAddr);
 // 默认端口
 let portNumber = computed(() => store.state.textsenddata.portNumber);
-// 文本框输入的文字
-// let inputText = ref("");
-let inputText = computed(() => store.state.textsenddata.inputText);
 // 是否显示About内容
 let showModal = ref(false);
 
