@@ -2,8 +2,8 @@
   <div class="qr-component">
     <n-tooltip trigger="hover">
       <template #trigger>
-        <div class="qr-component-div"> TODO
-          <img class="qr-code-img" src="qrImgSrc" @click="handleClickImg" />
+        <div class="qr-component-div">
+          <img class="qr-code-img" :src="qrImgSrc" @click="handleClickImg" />
         </div>
       </template>
       二维码将在点击“启动”后重新生成， 请使用Textsend安卓客户端扫码。
@@ -13,9 +13,15 @@
 
 <script setup>
 import { NTooltip } from "naive-ui";
+import { useStore } from 'vuex';
+import { computed } from "vue";
 
-// QR二维码图片地址
-let qrImgSrc = "../assets/favicon.png";
+const store = useStore();
+
+// QR二维码图片地址 下面这句行不通 参加: https://stackoverflow.com/questions/66419471/vue-3-vite-dynamic-image-src
+// let qrImgSrc = "../assets/favicon.png";
+// let qrImgSrc = new URL('../assets/favicon.png', import.meta.url);
+let qrImgSrc = computed(() => new URL(store.state.qrdata.qrImgSrc, import.meta.url));
 
 // const props = defineProps({});
 // 测试子传父

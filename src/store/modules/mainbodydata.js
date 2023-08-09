@@ -1,6 +1,9 @@
 // initial state 数据
 const state = () => ({
     serverMode: true, // 服务状态：服务端或者客户端
+    appName: "Textsend uTools 插件",
+    version: "0.0.1",
+    author: "Ryan Yim",
 })
 
 // getters : 有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数

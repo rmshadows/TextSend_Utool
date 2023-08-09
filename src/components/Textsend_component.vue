@@ -14,7 +14,8 @@
       <span class="select-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-select v-model:value="ipAddr" :options="ipAddrList" size="large" :on-update-value="selectOnUpdateValue" />
+            <n-select v-model:value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
+              @update-show="updateIpAddrList" />
           </template>
           请选择本机IP
         </n-tooltip>
@@ -23,45 +24,74 @@
         <n-tooltip trigger="hover">
           <template #trigger>
             <n-input-number v-model:value="portNumber" :validator="portNumberValidator" size="large" :max="65535"
-              placeholder="端口号" :format="portNumberFormator" :on-update-value="updatePort" />
+              placeholder="端口号" :format="portNumberFormator" @update-value="inputNumberUpdate" />
           </template>
           默认是 54300 端口。
         </n-tooltip>
       </span>
+      <!-- 按钮组 -->
       <n-button size="large" class="button" @click="btnLaunch"><span> 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 </span></n-button>
       <n-button size="large" class="button" @click="btnChangeMode"><span> 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换
         </span></n-button>
       <n-button size="large" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
+      <!-- About弹出框 -->
+      <n-modal v-model:show="showModal">
+        <n-card style="width: 600px" title="About" :bordered="false" size="huge" role="dialog" aria-modal="true">
+          名称：{{ this.$store.state.mainbodydata.appName }}
+          <br>
+          作者：{{ this.$store.state.mainbodydata.author }}
+          <br>
+          版本：{{ this.$store.state.mainbodydata.version }}
+        </n-card>
+      </n-modal>
     </div>
   </div>
 </template>
 
+// TODO:文本框
+
 <script setup>
-import { NInput, NButton, NSelect, NInputNumber, NTooltip } from "naive-ui";
-import { ref, reactive } from "vue"
+import { NInput, NButton, NSelect, NInputNumber, NTooltip, NCard, NModal } from "naive-ui";
+import { ref, reactive, computed } from "vue"
 import { useStore } from 'vuex'
 
 // 定义函数
+// 选择框
 /**
  * 更新IP地址列表(选择框)
  */
 const getIpAddrList = () => {
-  let ips = window.getIpAddr();
-  let ipA = [];
-  for (let i = 0; i < ips.length; i++) {
-    let seel = { label: ips[i], value: ips[i] }
-    ipA.push(seel);
-  }
-  console.log("返回IP列表:" + ipA);
-  return ipA;
+  // TODO:DEBUG
+  // let ips = window.getIpAddr();
+  // let ipA = [];
+  // for (let i = 0; i < ips.length; i++) {
+  //   let seel = { label: ips[i], value: ips[i] }
+  //   ipA.push(seel);
+  // }
+  // console.log("返回IP列表:" + ipA);
+  // return ipA;
+  return [{
+    "label": "127.0.0.1",
+    "value": "127.0.0.1"
+  },
+  {
+    "label": "::a",
+    "value": "::a"
+  },
+  {
+    "label": "::b",
+    "value": "::b"
+  },
+  {
+    "label": "192.168.30.126",
+    "value": "192.168.30.126"
+  }];
 }
-
-
 /**
  * 配置默认的IP
  * @param {ref {IP数组} array 
  */
-const setDefaultIpAddr = (array) => {
+const getDefaultIpAddr = (array) => {
   // 先查找192.168.1
   for (let i = 0; i < array.length; i++) {  //遍历数组
     if (String(array[i].value).includes("192.168.1.")) {
@@ -77,96 +107,51 @@ const setDefaultIpAddr = (array) => {
   }
   return "127.0.0.1";
 }
-
-// 当选择IP内容变动
-const selectOnUpdateValue = () => {
-
+/**
+ * 更新IP列表
+ */
+const updateIpAddrList = () => {
+  store.commit("textsenddata/setIpAddrListValue", getIpAddrList());
+}
+/**
+ * 当选择IP内容变动
+value: "192.168.30.126"
+option: {"label":"192.168.30.126","value":"192.168.30.126"}
+ * @param {*} value 
+ * @param {*} option 
+ */
+const selectOnUpdateValue = (value, option) => {
+  store.commit("textsenddata/setIpAddrValue", value);
 }
 
-/**
- *  定义变量 
- */
-// 已使用vuex代替父传子
-// const props = defineProps(['serverMode']);
-// console.log(props.serverMode);
-
-const emit = defineEmits(['']);
-// 默认值
-const defaultValue = ref(" - ");
-// 默认端口
-let portNumber = ref(54300);
-// 文本框输入的文字
-let inputText = ref("");
-// 使用vuex
-const store = useStore();
-
-// 初始化
-// E:ELECTRON MODE
-// let ipAddrList = ref(getIpAddrList());
-// V:VUE MODE
-let ipAddrList = ref([
-  {
-    "label": "127.0.0.1",
-    "value": "127.0.0.1"
-  },
-  {
-    "label": "::1",
-    "value": "::1"
-  },
-  {
-    "label": "192.168.30.126",
-    "value": "192.168.30.126"
-  },
-  {
-    "label": "fe80::abf:b8ff:fe3f:2faa",
-    "value": "fe80::abf:b8ff:fe3f:2faa"
-  },
-  {
-    "label": "10.147.18.226",
-    "value": "10.147.18.226"
-  },
-  {
-    "label": "fe80::cc34:2fff:febb:94dc",
-    "value": "fe80::cc34:2fff:febb:94dc"
-  },
-  {
-    "label": "10.147.19.226",
-    "value": "10.147.19.226"
-  },
-  {
-    "label": "fe80::306c:92ff:feca:bd52",
-    "value": "fe80::306c:92ff:feca:bd52"
-  }
-]);
-let ipAddr = ref(setDefaultIpAddr(ipAddrList.value));
-
-
-/**
- * 验证端口号是否合规 （要求大于0） 
- * @param {Number} x 
- */
-const portNumberValidator = (x) => x > 0;
-
+// 端口数字输入
 /**
  * 格式化为整数
  * @param {Number} value 
  * 返回String ！
  */
 const portNumberFormator = (value) => {
-  if ((value % 1) != 0)
+  let ts = String(value);
+  if ((value % 1) != 0) {
     // 返回字符串会警告
     // return parseInt(value);
-    return String(value);
-  return String(value);
+    console.log("格式化数字 =>" + parseInt(value));
+    ts = String(parseInt(value));
+  }
+  return ts;
 }
-
+/**
+ * 验证端口号是否合规 （要求大于0） 
+ * @param {Number} x 
+ */
+const portNumberValidator = (x) => x > 0;
 /**
  * 更新端口号
- * @param {Number} x
+ * @param {*} value 
  */
-const updatePort = (x) => {
-  console.log(x);
-};
+const inputNumberUpdate = (value) => {
+  store.commit("textsenddata/setPortNumberValue", value);
+}
 
 
 /**
@@ -180,9 +165,40 @@ const btnChangeMode = () => {
   store.commit('mainbodydata/changeServerMode');
 }
 const btnAbout = () => {
-
+  console.log("asdasd" + showModal);
+  showModal.value = true;
 }
 
+/**
+ *  定义变量 
+ */
+// 已使用vuex代替父传子
+// const props = defineProps(['serverMode']);
+// console.log(props.serverMode);
+
+const emit = defineEmits(['']);
+// 使用vuex
+const store = useStore();
+
+// IP列表
+let ipAddrList = computed(() => store.state.textsenddata.ipAddrList);
+// IP地址
+// let ipAddr = ref(setDefaultIpAddr(ipAddrList));
+let ipAddr = computed(() => store.state.textsenddata.ipAddr);
+// 默认端口
+let portNumber = computed(() => store.state.textsenddata.portNumber);
+// 文本框输入的文字
+// let inputText = ref("");
+let inputText = computed(() => store.state.textsenddata.inputText);
+// 是否显示About内容
+let showModal = ref(false);
+
+// 初始化
+updateIpAddrList();
+store.commit("textsenddata/setIpAddrValue", getDefaultIpAddr(store.state.textsenddata.ipAddrList));
+console.log("Init: " + JSON.stringify(store.state.textsenddata.ipAddrList));
+console.log("Init: " + store.state.textsenddata.ipAddr);
+console.log("Init: " + store.state.textsenddata.portNumber);
 </script>
 
 

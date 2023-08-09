@@ -17,11 +17,9 @@ import FooterComponent from "@/components/Footer_component.vue";
 .textsend {
   width: 100%;
   height: 100vh;
-  background-color: rgb(242, 242, 242);  
+  background-color: rgb(242, 242, 242);
 }
-</style>
 
-<style>
 body {
   margin: 0px;
 }

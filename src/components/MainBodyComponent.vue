@@ -15,7 +15,7 @@ import TextSendComponent from "./Textsend_component.vue";
 import { useStore } from 'vuex';
 import { computed } from "vue";
 
-const store = useStore()
+const store = useStore();
 // 是否是服务端模式 计算属性中返回某个状态
 let serverMode = computed(() => store.state.mainbodydata.serverMode);
 

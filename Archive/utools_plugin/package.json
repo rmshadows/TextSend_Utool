@@ -1,9 +1,0 @@
-{
-    "devDependencies": {
-        "utools-api-types": "^4.0.0"
-    },
-    "dependencies": {
-        "esm": "^3.2.25",
-        "list": "^2.0.19"
-    }
-}
