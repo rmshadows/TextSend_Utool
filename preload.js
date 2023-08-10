@@ -5,6 +5,10 @@ utools.onPluginEnter(({ code, type, payload, option }) => {
 
 const msystem = require("./src/nodejs/system");
 
+/**
+ * 返回本机IP地址
+ * @returns 
+ */
 window.getIpAddr = function () {
   return msystem.getIpAddr();
 }
