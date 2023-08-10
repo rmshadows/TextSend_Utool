@@ -40,6 +40,32 @@ const getters = {
             }
         }
     },
+    // 获取按钮所需的文字
+    getLaunchBtnText(state, getters, rootState, rootGetters) {
+        // 如果是服务端
+        if (rootGetters['mainbodydata/getServerMode']) {
+            // 如果服务启动
+            if (rootGetters['mainbodydata/getIsServerStart']) {
+                return " 停&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;止 ";
+            } else {
+                return " 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 ";
+            }
+        } else {
+            // 如果是客户端模式
+            if (rootGetters['mainbodydata/getIsConnected']) {
+                return " 断&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;开 ";
+            } else {
+                return " 连&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;接 ";
+            }
+        }
+    },
+    getChangeModeBtnText(state, getters, rootState, rootGetters) {
+        if (rootGetters['mainbodydata/getIsConnected']) {
+            return " 发&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;送 ";
+        } else {
+            return " 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换 ";
+        }
+    },
 }
 
 // actions : 异步commit mutations的方法

@@ -38,7 +38,7 @@
       <!-- 按钮组 -->
       <n-button size="large" class="button" @click="btnLaunch">
         <span v-html="launchBtnText"></span></n-button>
-      <n-button size="large" class="button" @click="btnChangeMode">
+      <n-button size="large" class="button" @click="btnChangeMode" :disabled="changeModeBtnStat">
         <span v-html="changeModeBtnText"></span></n-button>
       <n-button size="large" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
       <!-- About弹出框 -->
@@ -186,12 +186,48 @@ const inputNumberUpdate = (value) => {
  * 下面是按钮事件
  */
 const btnLaunch = () => {
-  store.getters['textsenddata/getInputTextPlaceholder'];
+  // TODO : DEBUG
+  // store.getters['textsenddata/getInputTextPlaceholder'];
+  // 如果是服务端模式
+  if (store.state.mainbodydata.serverMode) {
+    // 如果服务启动状态
+    if (store.state.mainbodydata.isServerStart) {
+      // 更改为服务停止
+      // TODO：停止Socket （状态在方法在设置）
+      // store.commit('mainbodydata/setServerStat', false);
+      // store.commit('mainbodydata/setConnectedStat', false);
+    } else {
+      // TODO:启动Socket
+      // store.commit('mainbodydata/setServerStat', true);
+    }
+  } else {
+    // 客户端模式
+    // 如果是连接状态
+    if (store.state.mainbodydata.isConnected) {
+      // TODO：断开链接（状态在方法在设置）
+      // store.commit('mainbodydata/setServerStat', false);
+      // store.commit('mainbodydata/setConnectedStat', false);
+    } else {
+      // TODO:链接服务端
+      // store.commit('mainbodydata/setServerStat', true);
+    }
+  }
 }
 const btnChangeMode = () => {
-  // 更改模式
-  store.commit('mainbodydata/changeServerMode');
-  // placeholder = store.getters.textsenddata
+  if (store.state.mainbodydata.isServerStart) {
+    // 如果服务模式启动，禁用切换按钮
+    console.log("服务启动，禁止切换模式");
+  } else {
+    // 如果服务模式停止，启用切换按钮
+    if (store.state.mainbodydata.isConnected) {
+      // 链接状态，可发送文字
+      // TODO: 发送文字
+    } else {
+      // 如果未连接状态，可切换模式
+      store.commit('mainbodydata/changeServerMode');
+    }
+  }
+
 }
 const btnAbout = () => {
   showModal.value = true;
@@ -223,8 +259,11 @@ let showModal = ref(false);
 // 文本框默认字
 // let placeholder = ref("请输入要发送的文字");
 let placeholder = computed(() => store.getters['textsenddata/getInputTextPlaceholder']);
-let launchBtnText = computed(() => store.state.textsenddata.launchBtnText);
-let changeModeBtnText = computed(() => store.state.textsenddata.changeModeBtnText);
+// let launchBtnText = computed(() => store.state.textsenddata.launchBtnText);
+let launchBtnText = computed(() => store.getters['textsenddata/getLaunchBtnText']);
+// let changeModeBtnText = computed(() => store.state.textsenddata.changeModeBtnText);
+let changeModeBtnText = computed(() => store.getters['textsenddata/getChangeModeBtnText']);
+let changeModeBtnStat = computed(() => store.state.mainbodydata.disableChangeModeBtn);
 
 // 初始化
 updateIpAddrList();
