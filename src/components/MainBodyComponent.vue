@@ -18,6 +18,8 @@ import { computed } from "vue";
 const store = useStore();
 // 是否是服务端模式 计算属性中返回某个状态
 let serverMode = computed(() => store.state.mainbodydata.serverMode);
+// 连接状态
+let isConnected = computed(() => store.state.mainbodydata.isConnected);
 
 // 测试子传父
 const handleClickInner = (value) => {

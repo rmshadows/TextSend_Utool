@@ -5,8 +5,8 @@
       <div class="input-padding-div">
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
-          <n-input class="input-textarea" :value="inputText" type="textarea" :clearable=true placeholder="请输入要发送的文字"
-            show-count @update-value="inputOnUpdate" :loading="isLoading" />
+          <n-input class="input-textarea" @input="inputOnInput" @change="inputOnChange" :value="inputText" type="textarea"
+            :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" :loading="isLoading" />
         </div>
       </div>
     </div>
@@ -36,9 +36,10 @@
         </n-tooltip>
       </span>
       <!-- 按钮组 -->
-      <n-button size="large" class="button" @click="btnLaunch"><span> 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 </span></n-button>
-      <n-button size="large" class="button" @click="btnChangeMode"><span> 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换
-        </span></n-button>
+      <n-button size="large" class="button" @click="btnLaunch">
+        <span v-html="launchBtnText"></span></n-button>
+      <n-button size="large" class="button" @click="btnChangeMode">
+        <span v-html="changeModeBtnText"></span></n-button>
       <n-button size="large" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
       <!-- About弹出框 -->
       <n-modal v-model:show="showModal">
@@ -64,12 +65,23 @@ import { useStore } from 'vuex'
 // 更新文本框
 const inputOnUpdate = async (value) => {
   // 使用Action
-  store.dispatch('textsenddata/setInputValue', value);
-  // store.dispatch('textsenddata/setIsLoadingValue', true)
-  //   .then(() => { store.dispatch('textsenddata/setInputValue', value) })
-  //   .then(() => { store.dispatch('textsenddata/setIsLoadingValue', false) });
+  // store.dispatch('textsenddata/setInputValue', value);
+  // Promise
+  store.dispatch('textsenddata/setIsLoadingValue', true)
+    .then(() => { store.dispatch('textsenddata/setInputValue', value) })
+    .then(() => { store.dispatch('textsenddata/setIsLoadingValue', false) });
   // 使用Mutation
   // store.commit("textsenddata/setInputValue", value);
+}
+
+// 先Update后OnInput最后onChange
+const inputOnInput = (value) => {
+
+}
+
+// change是最后调用的
+const inputOnChange = (value) => {
+
 }
 
 // 选择框
@@ -174,11 +186,12 @@ const inputNumberUpdate = (value) => {
  * 下面是按钮事件
  */
 const btnLaunch = () => {
-  store.commit("textsenddata/changeIsLoadingValue");
+  store.getters['textsenddata/getInputTextPlaceholder'];
 }
 const btnChangeMode = () => {
   // 更改模式
   store.commit('mainbodydata/changeServerMode');
+  // placeholder = store.getters.textsenddata
 }
 const btnAbout = () => {
   showModal.value = true;
@@ -207,6 +220,11 @@ let ipAddr = computed(() => store.state.textsenddata.ipAddr);
 let portNumber = computed(() => store.state.textsenddata.portNumber);
 // 是否显示About内容
 let showModal = ref(false);
+// 文本框默认字
+// let placeholder = ref("请输入要发送的文字");
+let placeholder = computed(() => store.getters['textsenddata/getInputTextPlaceholder']);
+let launchBtnText = computed(() => store.state.textsenddata.launchBtnText);
+let changeModeBtnText = computed(() => store.state.textsenddata.changeModeBtnText);
 
 // 初始化
 updateIpAddrList();

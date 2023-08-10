@@ -21,10 +21,26 @@ const state = () => ({
     inputText: "",
     // 是否加载中
     isLoading: false,
+    // 按钮文字
+    launchBtnText: "启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动",
+    changeModeBtnText: "切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换",
 })
 
 // getters : 有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数
-const getters = {}
+const getters = {
+    getInputTextPlaceholder(state, getters, rootState, rootGetters) {
+        if (rootGetters['mainbodydata/getServerMode']) {
+            return "请输入要发送的文字";
+        } else {
+            // 客户端模式
+            if (rootGetters['mainbodydata/getIsConnected']) {
+                return "请输入要发送的文字";
+            } else {
+                return "请输入服务端[IP地址]:[端口号]，如：192.168.1.2:54301 或者 192.168.1.2 (不加端口号默认54300) ";
+            }
+        }
+    },
+}
 
 // actions : 异步commit mutations的方法
 const actions = {

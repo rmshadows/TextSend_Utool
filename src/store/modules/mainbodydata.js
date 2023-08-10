@@ -1,20 +1,24 @@
 // initial state 数据
 const state = () => ({
-    serverMode: true, // 服务状态：服务端或者客户端
     appName: "Textsend uTools 插件",
     version: "0.0.1",
     author: "Ryan Yim",
+    serverMode: true, // 服务状态：服务端或者客户端
+    isConnected: false, // 是否已连接
 })
 
 // getters : 有时候我们需要从 store 中的 state 中派生出一些状态，例如对列表进行过滤并计数
-const getters = {}
+const getters = {
+    getIsConnected(state) {
+        return state.isConnected;
+    },
+    getServerMode(state){
+        return state.serverMode;
+    },
+}
 
 // actions : 异步commit mutations的方法
 const actions = {
-    async getAllProducts({ commit }) {
-        const products = await shop.getProducts()
-        commit('setProducts', products)
-    }
 }
 
 // mutations ：注意，mutations需要同步的
@@ -27,9 +31,11 @@ const mutations = {
     changeServerMode(state) {
         if (state.serverMode) {
             state.serverMode = false;
+            // "启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动"
             console.log("切换客户端模式");
         } else {
             state.serverMode = true;
+            // "启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动"
             console.log("切换服务端模式");
         }
         // return就报错！
@@ -47,6 +53,15 @@ const mutations = {
     at call (call.js:6:16)
          */
         // return serverMode;
+    },
+    setConnectStat(state, value) {
+        if (value) {
+            state.isConnected = true;
+            console.log("设置连接成功状态");
+        } else {
+            state.isConnected = false;
+            console.log("设置连接断开状态");
+        }
     },
 }
 
