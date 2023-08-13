@@ -102,13 +102,22 @@ export const useTextsendStore = defineStore('textsend', {
             console.log("changeIsLoadingValue: => " + this.isLoading);
         },
         setIsLoadingValue(value) {
-            this.isLoading = value;
-            console.log("set isLoading value to " + this.isLoading);
+            if (value != this.isLoading) {
+                this.isLoading = value;
+                console.log("set isLoading value to " + this.isLoading);
+            }
         },
-        setInputTextValue(value) {
-            this.setIsLoadingValue(true);
-            this.setInputValueSync(value);
-            this.setIsLoadingValue(false);
+        async setInputTextValue(value) {
+            new Promise((resolve, reject) => {
+                this.setIsLoadingValue(true);
+                resolve();
+            });
+            new Promise((resolve, reject) => {
+                this.setInputValueSync(value);
+                resolve();
+            }).then(() => {
+                this.setIsLoadingValue(false);
+            });
         },
     },
 })

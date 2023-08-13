@@ -6,7 +6,7 @@
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
           <n-input class="input-textarea" @input="inputOnInput" @change="inputOnChange" :value="inputText" type="textarea"
-            :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" :loading="isLoading" />
+            :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" autofocus="true" :loading="isLoading" />
         </div>
       </div>
     </div>
