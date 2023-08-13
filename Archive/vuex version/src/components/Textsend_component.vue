@@ -44,11 +44,11 @@
       <!-- About弹出框 -->
       <n-modal v-model:show="showModal">
         <n-card style="width: 600px" title="About" :bordered="false" size="huge" role="dialog" aria-modal="true">
-          名称：{{ mbStore.appName }}
+          名称：{{ this.$store.state.mainbodydata.appName }}
           <br>
-          作者：{{ mbStore.author }}
+          作者：{{ this.$store.state.mainbodydata.author }}
           <br>
-          版本：{{ mbStore.version }}
+          版本：{{ this.$store.state.mainbodydata.version }}
         </n-card>
       </n-modal>
     </div>
@@ -58,23 +58,27 @@
 <script setup>
 import { NInput, NButton, NSelect, NInputNumber, NTooltip, NCard, NModal } from "naive-ui";
 import { ref, reactive, computed } from "vue"
-import { useTextsendStore } from '../stores/textsendStore'
-import { useMainbodyStore } from '../stores/mainbodyStore'
-
-// 可以在组件中的任意位置访问 `store` 变量 ✨
-const tsStore = useTextsendStore();
-const mbStore = useMainbodyStore();
+import { useStore } from 'vuex'
 
 // 定义函数
 // 文本框
 // 更新文本框
-const inputOnUpdate = (value) => {
-  tsStore.setInputTextValue(value);
+const inputOnUpdate = async (value) => {
+  // 使用Action
+  // store.dispatch('textsenddata/setInputValue', value);
+  // Promise
+  store.dispatch('textsenddata/setIsLoadingValue', true)
+    .then(() => { store.dispatch('textsenddata/setInputValue', value) })
+    .then(() => { store.dispatch('textsenddata/setIsLoadingValue', false) });
+  // 使用Mutation
+  // store.commit("textsenddata/setInputValue", value);
 }
+
 // 先Update后OnInput最后onChange
 const inputOnInput = (value) => {
 
 }
+
 // change是最后调用的
 const inputOnChange = (value) => {
 
@@ -135,7 +139,7 @@ const getDefaultIpAddr = (array) => {
  * 更新IP列表
  */
 const updateIpAddrList = () => {
-  tsStore.setIpAddrListValue(getIpAddrList());
+  store.commit("textsenddata/setIpAddrListValue", getIpAddrList());
 }
 /**
  * 当选择IP内容变动
@@ -145,7 +149,7 @@ option: {"label":"192.168.30.126","value":"192.168.30.126"}
  * @param {*} option 
  */
 const selectOnUpdateValue = (value, option) => {
-  tsStore.setIpAddrValue(value);
+  store.commit("textsenddata/setIpAddrValue", value);
 }
 
 // 端口数字输入
@@ -174,7 +178,7 @@ const portNumberValidator = (x) => x > 0;
  * @param {*} value 
  */
 const inputNumberUpdate = (value) => {
-  tsStore.setPortNumberValue(value);
+  store.commit("textsenddata/setPortNumberValue", value);
 }
 
 
@@ -185,36 +189,42 @@ const btnLaunch = () => {
   // TODO : DEBUG
   // store.getters['textsenddata/getInputTextPlaceholder'];
   // 如果是服务端模式
-  if (mbStore.serverMode) {
+  if (store.state.mainbodydata.serverMode) {
     // 如果服务启动状态
-    if (mbStore.isServerStart) {
+    if (store.state.mainbodydata.isServerStart) {
       // 更改为服务停止
       // TODO：停止Socket （状态在方法在设置）
+      // store.commit('mainbodydata/setServerStat', false);
+      // store.commit('mainbodydata/setConnectedStat', false);
     } else {
       // TODO:启动Socket
+      // store.commit('mainbodydata/setServerStat', true);
     }
   } else {
     // 客户端模式
     // 如果是连接状态
-    if (mbStore.isConnected) {
+    if (store.state.mainbodydata.isConnected) {
       // TODO：断开链接（状态在方法在设置）
+      // store.commit('mainbodydata/setServerStat', false);
+      // store.commit('mainbodydata/setConnectedStat', false);
     } else {
       // TODO:链接服务端
+      // store.commit('mainbodydata/setServerStat', true);
     }
   }
 }
 const btnChangeMode = () => {
-  if (mbStore.isServerStart) {
+  if (store.state.mainbodydata.isServerStart) {
     // 如果服务模式启动，禁用切换按钮
     console.log("服务启动，禁止切换模式");
   } else {
     // 如果服务模式停止，启用切换按钮
-    if (mbStore.isConnected) {
+    if (store.state.mainbodydata.isConnected) {
       // 链接状态，可发送文字
       // TODO: 发送文字
     } else {
       // 如果未连接状态，可切换模式
-      mbStore.changeServerMode();
+      store.commit('mainbodydata/changeServerMode');
     }
   }
 
@@ -226,31 +236,41 @@ const btnAbout = () => {
 /**
  *  定义变量 
  */
-// const emit = defineEmits(['']);
+// 已使用vuex代替父传子
+// const props = defineProps(['serverMode']);
+// console.log(props.serverMode);
+
+const emit = defineEmits(['']);
+// 使用vuex
+const store = useStore();
 // 文本框输入的文字
-let inputText = computed(() => tsStore.inputText);
-let isLoading = computed(() => tsStore.isLoading);
+// let inputText = ref("");
+let inputText = computed(() => store.state.textsenddata.inputText);
+let isLoading = computed(() => store.state.textsenddata.isLoading);
 // IP列表
-let ipAddrList = computed(() => tsStore.ipAddrList);
+let ipAddrList = computed(() => store.state.textsenddata.ipAddrList);
 // IP地址
-let ipAddr = computed(() => tsStore.ipAddr);
+// let ipAddr = ref(setDefaultIpAddr(ipAddrList));
+let ipAddr = computed(() => store.state.textsenddata.ipAddr);
 // 默认端口
-let portNumber = computed(() => tsStore.portNumber);
+let portNumber = computed(() => store.state.textsenddata.portNumber);
 // 是否显示About内容
 let showModal = ref(false);
 // 文本框默认字
-let placeholder = computed(() => tsStore.getInputTextPlaceholder);
-let launchBtnText = computed(() => tsStore.getLaunchBtnText);
-let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
-let changeModeBtnStat = computed(() => tsStore.disableChangeModeBtn);
+// let placeholder = ref("请输入要发送的文字");
+let placeholder = computed(() => store.getters['textsenddata/getInputTextPlaceholder']);
+// let launchBtnText = computed(() => store.state.textsenddata.launchBtnText);
+let launchBtnText = computed(() => store.getters['textsenddata/getLaunchBtnText']);
+// let changeModeBtnText = computed(() => store.state.textsenddata.changeModeBtnText);
+let changeModeBtnText = computed(() => store.getters['textsenddata/getChangeModeBtnText']);
+let changeModeBtnStat = computed(() => store.state.mainbodydata.disableChangeModeBtn);
 
 // 初始化
 updateIpAddrList();
-// 获取默认IP (仅在初始化时调用) 
-tsStore.setIpAddrValue(getDefaultIpAddr(tsStore.ipAddrList));
-console.log("Init: " + JSON.stringify(tsStore.ipAddrList));
-console.log("Init: " + tsStore.ipAddr);
-console.log("Init: " + tsStore.portNumber);
+store.commit("textsenddata/setIpAddrValue", getDefaultIpAddr(store.state.textsenddata.ipAddrList));
+console.log("Init: " + JSON.stringify(store.state.textsenddata.ipAddrList));
+console.log("Init: " + store.state.textsenddata.ipAddr);
+console.log("Init: " + store.state.textsenddata.portNumber);
 </script>
 
 

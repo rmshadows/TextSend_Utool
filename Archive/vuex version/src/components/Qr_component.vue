@@ -13,25 +13,24 @@
 
 <script setup>
 import { NTooltip } from "naive-ui";
+import { useStore } from 'vuex';
 import { computed } from "vue";
-import { useQrStore } from '../stores/qrStore'
 
-// 可以在组件中的任意位置访问 `store` 变量 ✨
-const qrStore = useQrStore();
+const store = useStore();
 
 // QR二维码图片地址 下面这句行不通 参加: https://stackoverflow.com/questions/66419471/vue-3-vite-dynamic-image-src
 // let qrImgSrc = "../assets/favicon.png";
 // let qrImgSrc = new URL('../assets/favicon.png', import.meta.url);
-let qrImgSrc = computed(() => new URL(qrStore.qrImgSrc, import.meta.url));
+let qrImgSrc = computed(() => new URL(store.state.qrdata.qrImgSrc, import.meta.url));
 
 // const props = defineProps({});
 // 测试子传父
-// const emit = defineEmits(['handleClickImg'])
-// const handleClickImg = () => {
-//   console.log("点击里面的图片");
-//   // 向父组件发出img-click
-//   emit("img-click", 111);
-// };
+const emit = defineEmits(['handleClickImg'])
+const handleClickImg = () => {
+  console.log("点击里面的图片");
+  // 向父组件发出img-click
+  emit("img-click", 111);
+};
 </script>
 
 <style scoped lang="less">
