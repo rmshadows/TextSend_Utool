@@ -60,10 +60,13 @@ import { NInput, NButton, NSelect, NInputNumber, NTooltip, NCard, NModal } from 
 import { ref, reactive, computed } from "vue"
 import { useTextsendStore } from '../stores/textsendStore'
 import { useMainbodyStore } from '../stores/mainbodyStore'
+import { useQrStore } from '../stores/qrStore'
+import * as js from "../js/tsc"
 
 // 可以在组件中的任意位置访问 `store` 变量 ✨
 const tsStore = useTextsendStore();
 const mbStore = useMainbodyStore();
+const qrStore = useQrStore();
 
 // 定义函数
 // 文本框
@@ -82,60 +85,10 @@ const inputOnChange = (value) => {
 
 // 选择框
 /**
- * 更新IP地址列表(选择框)
- */
-const getIpAddrList = () => {
-  // TODO:DEBUG
-  // let ips = window.getIpAddr();
-  // let ipA = [];
-  // for (let i = 0; i < ips.length; i++) {
-  //   let seel = { label: ips[i], value: ips[i] }
-  //   ipA.push(seel);
-  // }
-  // console.log("返回IP列表:" + ipA);
-  // return ipA;
-  return [{
-    "label": "127.0.0.1",
-    "value": "127.0.0.1"
-  },
-  {
-    "label": "::a",
-    "value": "::a"
-  },
-  {
-    "label": "::b",
-    "value": "::b"
-  },
-  {
-    "label": "192.168.30.126",
-    "value": "192.168.30.126"
-  }];
-}
-/**
- * 配置默认的IP
- * @param {ref {IP数组} array 
- */
-const getDefaultIpAddr = (array) => {
-  // 先查找192.168.1
-  for (let i = 0; i < array.length; i++) {  //遍历数组
-    if (String(array[i].value).includes("192.168.1.")) {
-      return array[i].value;
-    }
-  }
-  // 再查找192.168
-  for (let i = 0; i < array.length; i++) {
-    if (array[i].value.includes("192.168.")) {
-      console.log("返回默认IP:" + array[i].value);
-      return array[i].value;
-    }
-  }
-  return "127.0.0.1";
-}
-/**
  * 更新IP列表
  */
 const updateIpAddrList = () => {
-  tsStore.setIpAddrListValue(getIpAddrList());
+  tsStore.setIpAddrListValue(js.getIpAddrList());
 }
 /**
  * 当选择IP内容变动
@@ -192,6 +145,7 @@ const btnLaunch = () => {
       // TODO：停止Socket （状态在方法在设置）
     } else {
       // TODO:启动Socket
+      qrStore.setQrImgValue(js.getQrImgPath(tsStore.ipAddr, tsStore.portNumber));
     }
   } else {
     // 客户端模式
@@ -200,6 +154,7 @@ const btnLaunch = () => {
       // TODO：断开链接（状态在方法在设置）
     } else {
       // TODO:链接服务端
+
     }
   }
 }
@@ -247,7 +202,7 @@ let changeModeBtnStat = computed(() => tsStore.disableChangeModeBtn);
 // 初始化
 updateIpAddrList();
 // 获取默认IP (仅在初始化时调用) 
-tsStore.setIpAddrValue(getDefaultIpAddr(tsStore.ipAddrList));
+tsStore.setIpAddrValue(js.getDefaultIpAddr(tsStore.ipAddrList));
 console.log("Init: " + JSON.stringify(tsStore.ipAddrList));
 console.log("Init: " + tsStore.ipAddr);
 console.log("Init: " + tsStore.portNumber);

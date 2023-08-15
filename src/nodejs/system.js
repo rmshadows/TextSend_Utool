@@ -40,6 +40,9 @@ function getIpAddr(type = 0) {
     return L.toArray(iaddr);
 }
 
+
+
+
 module.exports = {
     getIpAddr,
 }

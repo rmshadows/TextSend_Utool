@@ -4,6 +4,9 @@ utools.onPluginEnter(({ code, type, payload, option }) => {
 });
 
 const msystem = require("./src/nodejs/system");
+const crypto = require("./src/nodejs/crypto");
+const message = require("./src/nodejs/message");
+const qrcode = require("./src/nodejs/qrimg");
 
 /**
  * 返回本机IP地址
@@ -13,4 +16,12 @@ window.getIpAddr = function () {
   return msystem.getIpAddr();
 }
 
+window.Message = MSG;
 
+window.encrypt = function () {
+  return msystem.getIpAddr();
+}
+
+window.getQrImgPath = function (ip, port) {
+  return qrcode.generateQR(ip, port);
+}

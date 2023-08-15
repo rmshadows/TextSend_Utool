@@ -1,5 +1,41 @@
-const cfb = reqiure("./aes_cfb.cjs")
-const cbc = reqiure("./aes_cbc.cjs")
+const cfb = require("./aes_cfb.cjs")
+const cbc = require("./aes_cbc.cjs")
+
+class cfbCipher {
+  constructor(key, iv, length=32){
+    this.key = key;
+    this.iv = iv;
+    this.length =length;
+  }
+
+  encrypt(msg){
+    let kp = createCFB(this.key, this.iv, this.length);
+    return encryptCFB(kp, msg);
+  }
+
+  decrypt(msg){
+    let kp = createCFB(this.key, this.iv, this.length);
+    return decryptCFB(kp, msg);
+  }
+}
+
+class cbcCipher {
+  constructor(key, iv, length=32){
+    this.key = key;
+    this.iv = iv;
+    this.length =length;
+  }
+
+  encrypt(msg){
+    let kp = createCBC(this.key, this.iv, this.length);
+    return encryptCBC(kp, msg);
+  }
+
+  decrypt(msg){
+    let kp = createCBC(this.key, this.iv, this.length);
+    return decryptCBC(kp, msg);
+  }
+}
 
 /**
  * 返回一对CFB加密器，解密器
@@ -109,7 +145,9 @@ function test() {
   let cbcs = createCBC("123456", "4321", 32);
   console.log("CFB加密前：" + msg);
   let xmsg = encryptCFB(cfbs, msg);
-  console.log("CFB加密：" + xmsg);
+  console.log("CFB加密1：" + xmsg);
+  xmsg = encryptCFB(cfbs, "666");
+  console.log("CFB加密2：" + xmsg);
   console.log("CFB解密：" + decryptCFB(cfbs, xmsg));
   xmsg = encryptCFB(undefined, msg, "12345", "54321", 32);
   console.log("CFB临时加密(PWD: 12345;IV:54321)：" + xmsg);
@@ -123,7 +161,7 @@ function test() {
   console.log("CBC临时加密(PWD: 12345;IV:54321)：" + xmsg);
   console.log("CBC临时解密(PWD: 12345;IV:54321)：" + decryptCBC(undefined, xmsg, "12345", "54321", 32));
 }
-test();
+// test();
 /**
 CFB加密前：妳好Hello@
 CFB加密：0DF262FE3A6F56282D6E5B9B
@@ -145,4 +183,6 @@ module.exports = {
   encryptCBC,
   createCBC,
   createCFB,
+  cfbCipher,
+  cbcCipher, 
 }
