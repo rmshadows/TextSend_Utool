@@ -146,11 +146,7 @@ const btnLaunch = () => {
     } else {
       // TODO:启动Socket
       // 生成二维码 并修改二维码图片
-      // assets/qrcode.png:1          
-      // GET file:///home/jessie/Project/Github/TextSend_Utool/ui/assets/qrcode.png 
-      // net::ERR_FILE_NOT_FOUND
-      // qrStore.setQrImgValue(js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber));
-      window.showPath();
+      qrStore.setQrImgValue(js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber));
     }
   } else {
     // 客户端模式
@@ -177,7 +173,6 @@ const btnChangeMode = () => {
       mbStore.changeServerMode();
     }
   }
-
 }
 const btnAbout = () => {
   showModal.value = true;
@@ -211,6 +206,8 @@ tsStore.setIpAddrValue(js.getDefaultIpAddr(tsStore.ipAddrList));
 console.log("Init: " + JSON.stringify(tsStore.ipAddrList));
 console.log("Init: " + tsStore.ipAddr);
 console.log("Init: " + tsStore.portNumber);
+// 测试utools API
+// window.showPath();
 </script>
 
 

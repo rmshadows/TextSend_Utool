@@ -1,16 +1,23 @@
 "use strict";
 const QR = require("./mqrcode/mqrcode.cjs");
+const path = require("path");
 
-function generateQR(ip, port) {
+/**
+ * 保存二维码到。。。
+ * @param {*} ip 
+ * @param {*} port 
+ * @param {*} saveto 文件夹路径
+ * @returns 
+ */
+function generateQR(ip, port, saveto) {
     // let p = "../../ui/assets/qrcode.png";
-    let p = "qrcode.png";
-    console.log(process.cwd());
+    let p = "tsqrcode.png";
+    let fp = path.join(saveto, p)
     try {
         let content = String(ip) + ":" + String(port);
-        console.log("qrimg.js:generateQR: " + content + " => " + p);
-        QR.createQRSync(content, p, 512, "png");
-        // return p;
-        return "../assets/qrcode.png";
+        console.log("qrimg.js:generateQR: " + content + " => " + fp);
+        QR.createQRSync(content, fp, 512, "png");
+        return fp;
     } catch (error) {
         console.log(error);
         return "../assets/favicon.png";
@@ -22,4 +29,4 @@ module.exports = {
     generateQR,
 }
 
-generateQR("192.168.1.1", "54300");
+// generateQR("192.168.1.1", "54300", "/home/ryan");

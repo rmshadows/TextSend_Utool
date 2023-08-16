@@ -1,4 +1,3 @@
-// U开头表示借助preload脚本的函数
 /**
  * 配置默认的IP
  * @param ref {IP数组} array 
@@ -21,6 +20,7 @@ export const getDefaultIpAddr = (array) => {
 }
 
 
+// U开头表示借助preload脚本的函数
 /**
  * 更新IP地址列表(选择框) / U
  */

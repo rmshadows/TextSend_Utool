@@ -1,7 +1,7 @@
 // 进入插件调用的
-utools.onPluginEnter(({ code, type, payload, option }) => {
-  console.log('用户进入插件应用', code, type, payload)
-});
+// utools.onPluginEnter(({ code, type, payload, option }) => {
+//   console.log('用户进入插件应用', code, type, payload)
+// });
 
 const msystem = require("./src/nodejs/system");
 const crypto = require("./src/nodejs/crypto");
@@ -23,9 +23,18 @@ window.encrypt = function () {
 }
 
 window.getQrImgPath = function (ip, port) {
-  return qrcode.generateQR(ip, port);
+  return qrcode.generateQR(ip, port, utools.getPath("temp"));
 }
 
+
+window.getTempDir = function () {
+  return utools.getPath("temp");
+}
+
+
+/**
+ * 测试utools api输出
+ */
 window.showPath = function () {
   console.log("用户的 home 文件夹（主目录）: " + utools.getPath("home"));
   console.log("当前用户的应用数据文件夹，默认对应: " + utools.getPath("appData"));
