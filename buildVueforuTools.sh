@@ -7,3 +7,4 @@ if [ "$?" -eq 0 ];then
     mv ./dist/* ./ui/
     rm -r ./dist
 fi
+cp logo.png ./ui/assets/favicon.png
