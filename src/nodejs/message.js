@@ -1,5 +1,6 @@
 const L = require('list');
 const AES_Util = require("./crypto");
+const { randomNum } = require('./system');
 
 /**
  * 加密的Msg类 解密请在App中实现，此类不包含解密的任何功能
@@ -12,6 +13,11 @@ class Message {
         this.id = undefined;
         // 留言
         this.notes = undefined;
+        // 要传输的JSON
+        /**
+         * 格式：{id, data, notes}
+         */
+        this.json = {};
 
         if (stringText != undefined) {
             console.log("封装字符串：" + stringText);
@@ -22,6 +28,7 @@ class Message {
         } else {
             this.setNotes("undefined");
         }
+        // 处理文字数据
         if (stringText != undefined) {
             // 需要截取的长度
             let r_len = length; // 10
@@ -40,6 +47,18 @@ class Message {
                 this.addData(this.encryptData(e));
             }
         }
+        // 处理ID和note (加随机数，冒号后面)
+        let id2e = String(this.getId() + ":" + randomNum(0, 5000));
+        this.json['id'] = this.encryptData(id2e);
+        this.json['data'] = this.getData();
+        this.json['note'] = this.encryptData(this.getNotes() + ":" + randomNum(0, 5000));
+        this.json = JSON.stringify(this.json);
+        // console.log("Generate JSON: " + this.json);
+    }
+
+    // 返回用于传输的JSON
+    getJSON() {
+        return this.json;
     }
 
     // 加密(解密功能定义在接受端)
@@ -61,7 +80,7 @@ class Message {
     getData() {
         return this.encrypt_data;
     }
-    getDataArray(){
+    getDataArray() {
         return L.toArray(this.encrypt_data);
     }
     addData(string) {
