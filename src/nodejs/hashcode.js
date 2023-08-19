@@ -55,7 +55,7 @@ function hashCode(string) {
         hash = ((hash << 5) - hash) + code;
         hash = hash & hash; // Convert to 32bit integer
     }
-    return hash;
+    return Number(hash);
 }
 
 module.exports = {

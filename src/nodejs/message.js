@@ -7,26 +7,31 @@ const { randomNum } = require('./system');
  */
 class Message {
     constructor(stringText, length, id, notes) {
+        // 文字
+        this.stringText = stringText;
+        // id
+        this.id = id;
+        // 留言
+        this.notes = notes;
+        if(stringText == ""){
+            this.stringText == undefined;
+        }
+        if(id == ""){
+            this.id = undefined;
+        }
+        if(notes == ""){
+            this.notes = undefined;
+        }
         // 加密的数据
         this.encrypt_data = L.empty();
-        // id
-        this.id = undefined;
-        // 留言
-        this.notes = undefined;
         // 要传输的JSON
         /**
          * 格式：{id, data, notes}
          */
         this.json = {};
-
-        if (stringText != undefined) {
-            console.log("封装字符串：" + stringText);
-        }
         this.setId(id);
         if (notes != undefined) {
             this.setNotes(notes);
-        } else {
-            this.setNotes("undefined");
         }
         // 处理文字数据
         if (stringText != undefined) {
@@ -49,10 +54,12 @@ class Message {
         }
         // 处理ID和note (加随机数，冒号后面)
         let id2e = String(this.getId() + ":" + randomNum(0, 5000));
+        let notes2e = String(this.getNotes() + ":" + randomNum(0, 5000));
         this.json['id'] = this.encryptData(id2e);
-        this.json['data'] = this.getData();
-        this.json['note'] = this.encryptData(this.getNotes() + ":" + randomNum(0, 5000));
+        this.json['data'] = this.getDataArray();
+        this.json['notes'] = this.encryptData(notes2e);
         this.json = JSON.stringify(this.json);
+        // console.log("Clear: " + this.id + "/" + this.stringText + "/" + this.notes);
         // console.log("Generate JSON: " + this.json);
     }
 
@@ -90,7 +97,7 @@ class Message {
         return this.id;
     }
     setId(id) {
-        this.id = id;
+        this.id = String(id);
     }
 }
 

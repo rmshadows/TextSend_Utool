@@ -22,9 +22,33 @@ function decrypt(msg) {
     return dmsg;
 }
 
+/**
+ * 解密JSON
+ * @param {*} jsonstr 
+ * @returns 
+ */
+function decryptJSON(jsonstr) {
+    try {
+        // {id, data, notes}
+        let json = JSON.parse(jsonstr);
+        let id = decrypt(json["id"]).split(":")[0];
+        let data = "";
+        for (let i = 0; i < json["data"].length; i++) {
+            const el = json["data"][i];
+            data += decrypt(el);
+        }
+        let notes = decrypt(json["notes"]).split(":")[0];
+        return [id, data, notes]
+    } catch (error) {
+        console.log("解密失败: " + error);
+        return undefined;
+    }
+}
+
 
 module.exports = {
     Cipher,
     encrypt,
     decrypt,
+    decryptJSON,
 }

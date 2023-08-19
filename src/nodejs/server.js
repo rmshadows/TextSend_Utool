@@ -4,6 +4,7 @@ const net = require('net');
 const Hashcode = require('./hashcode');
 const { Message } = require('./message');
 const profile = require("./profile");
+const crypto = require("./crypto");
 
 /**
 参考：
@@ -59,43 +60,74 @@ function createTsServer(port, overwrite = false) {
         console.log("<- client-connected   :" + remoteIP + "(" + clientId + ")");
         // 将id发给客户端(服务端发送ID到客户端，客户端发送传输模式到服务端)
         // node端使用JSON传输，Java直接传输类
+        // [ '-200', '', '3566633025' ]
         let sendIdData = new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, clientId).getJSON();
-        console.log("服务端分配ID：" + sendIdData);
+        // console.log("服务端分配ID：" + sendIdData);
         socket.write(sendIdData);
+        // 是否获取客户端模式
+        let getClientMode = true;
+        // 客户端是否确认ID 确认格式：id(id:{random}):data(空):notes(CONFIRM-{$客户端模式}:{random})
+        // 注意，随机数在加密解密时已经去除 不能 :
+        let clientConfirm = false;
+
+        // 设置客户端超时10秒（除非连接成功）
+        socket.setTimeout(10000);
 
         // 客户端信息 data写在connection中
         socket.on('data', (data) => {
-            let getClientMode = true;
+            // 首先使用JSON
+            // 分配ID -> 客户端返回接收到ID的确认(包含模式) -> 没有确认就断开连接 -> 确认就继续
             if (getClientMode) {
+                // id data notes
+                data = crypto.decryptJSON(data);
                 // 先识别客户端头部
-                if (true) {
-                    // 客户端模式：0: java class 1:JSON
-                    let clientMode = undefined;
-                    // 如果成功设置模式
-                    getClientMode = false;
-                    // 添加连接
-                    connected[clientId] = [socket, clientMode];
+                if (data != undefined && Number(data[0]) == clientId) {
+                    try {
+                        let tsp = data[2].split("-"); // 分隔成 CONFIRM:{$客户端模式}
+                        if (tsp[0] == "CONFIRM") {
+                            // 客户端模式：0: java class 1:JSON
+                            let clientMode = Number(tsp[1]);
+                            // 模式要在0或者1才有效
+                            if ([0, 1].indexOf(clientMode) != -1) {
+                                // 如果成功设置模式
+                                getClientMode = false;
+                                // 添加连接
+                                connected[clientId] = [socket, clientMode];
+                                console.log("客户端模式：" + clientMode);
+                                clientConfirm = true;
+                            }
+                        }
+                    } catch (error) {
+                        console.log("客户端ID确认失败或者客户端模式获取失败： " + error);
+                    }
+                    // 配置不成功就断开
+                    if (!clientConfirm) {
+                        socket.end();
+                        socket.destroy();
+                    } else {
+                        // 超时：1小时
+                        socket.setTimeout(3600000);
+                    }
+                } else {
+                    console.log("未收到正确的客户端模式和确认请求，等待超时后将断开。");
                 }
             } else {
-                // socket.write(`你好:${name}`)
-                console.log(data);
-                // 接受到0退出
-                if (String(data) == "0") {
-                    // socket.end();
-                    connected.forEach(x => x.end());
-                    server.close();
-                }
+                // 正常读取JSON
+                console.log("解密前：" + data);
+                data = crypto.decryptJSON(data);
+                console.log("解密后：" + data);
             }
+            // TODO:node端自动发送json模式到其他端
         });
 
         socket.on('end', () => {
             console.log('-> client-disconnected');
         });
-        // 超时：1小时
-        socket.setTimeout(3600000);
+
         socket.on('timeout', () => {
             console.log(remoteIP + ' timeout');
             socket.end();
+            socket.destroy();
         });
 
         socket.on('error', (err) => {
@@ -127,6 +159,7 @@ function createTsServer(port, overwrite = false) {
         console.log(`服务已开启在 ${port}`);
     });
 }
+
 
 /**
  * 服务器数量、连接数
