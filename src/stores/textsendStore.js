@@ -78,11 +78,11 @@ export const useTextsendStore = defineStore('textsend', {
     },
     actions: {
         setIpAddrListValue(value) {
-            console.log("setIpAddrListValue: 设置IP下拉框列表 => " + JSON.stringify(value));
+            // console.log("setIpAddrListValue: 设置IP下拉框列表 => " + JSON.stringify(value));
             this.ipAddrList = value;
         },
         setIpAddrValue(value) {
-            console.log("setIpAddrValue: 设置IP地址 => " + value);
+            // console.log("setIpAddrValue: 设置IP地址 => " + value);
             this.ipAddr = value;
         },
         setPortNumberValue(value) {

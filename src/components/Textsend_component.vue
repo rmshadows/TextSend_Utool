@@ -6,7 +6,8 @@
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
           <n-input class="input-textarea" @input="inputOnInput" @change="inputOnChange" :value="inputText" type="textarea"
-            :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" autofocus="true" :loading="isLoading" />
+            :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" autofocus="true"
+            :loading="isLoading" />
         </div>
       </div>
     </div>
@@ -141,12 +142,18 @@ const btnLaunch = () => {
   if (mbStore.serverMode) {
     // 如果服务启动状态
     if (mbStore.isServerStart) {
-      // 更改为服务停止
-      // TODO：停止Socket （状态在方法在设置）
+      // 停止Socket （更改为服务停止:状态在方法在设置）
+      mbStore.serverStop();
+      qrStore.setQrImgDefaultValue();
     } else {
-      // TODO:启动Socket
+      // 启动Socket
+      mbStore.serverStart(tsStore.portNumber);
       // 生成二维码 并修改二维码图片
-      qrStore.setQrImgValue(js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber));
+      let qrpath = js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber);
+      // 等待二维码生成再更改图片
+      setTimeout(() => {
+        qrStore.setQrImgValue(qrpath);
+      }, 500);
     }
   } else {
     // 客户端模式
@@ -197,7 +204,8 @@ let showModal = ref(false);
 let placeholder = computed(() => tsStore.getInputTextPlaceholder);
 let launchBtnText = computed(() => tsStore.getLaunchBtnText);
 let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
-let changeModeBtnStat = computed(() => tsStore.disableChangeModeBtn);
+// 按钮状态
+let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
 
 // 初始化
 updateIpAddrList();

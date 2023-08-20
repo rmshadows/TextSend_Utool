@@ -40,7 +40,7 @@ function decryptJSON(jsonstr) {
         let notes = decrypt(json["notes"]).split("☯☯")[0];
         return [id, data, notes]
     } catch (error) {
-        console.log("解密失败: " + error);
+        console.log("解密失败(" + jsonstr + "): " + error);
         return undefined;
     }
 }

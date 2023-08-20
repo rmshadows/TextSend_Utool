@@ -7,7 +7,7 @@ const hasOwnProperty = Object.prototype.hasOwnProperty
 const hash = (string) => {
     let hash = 0
     string = string.toString()
-    for(let i = 0; i < string.length; i++){
+    for (let i = 0; i < string.length; i++) {
         hash = (((hash << 5) - hash) + string.charCodeAt(i)) & 0xFFFFFFFF
     }
     return hash
@@ -15,19 +15,20 @@ const hash = (string) => {
 
 // Deep hashes an object
 const object = (obj) => {
-    if(typeof obj.getTime == 'function'){
+    if (typeof obj.getTime == 'function') {
         return obj.getTime()
     }
     let result = 0
-    for(let property in obj){
-        if(hasOwnProperty.call(obj, property)){
-            result += hash(property + value(obj[property]))
+    for (let property in obj) {
+        // 下面这一句可能会陷入死循环 Uncaught RangeError: Maximum call stack size exceeded
+        if (hasOwnProperty.call(obj, property)) {
+            result += hash(property + hashCodeObject(obj[property]))
         }
     }
     return result
 }
 
-const value = (value) => {
+const hashCodeObject = (value) => {
     const type = value == undefined ? undefined : typeof value
     // Does a type check on the passed in value and calls the appropriate hash method
     return MAPPER[type] ? MAPPER[type](value) + hash(type) : 0
@@ -43,12 +44,13 @@ const MAPPER =
     // types 'undefined' or 'null' will have a hash of 0
 }
 
+
 /**
  * https://stackoverflow.com/questions/194846/is-there-hash-code-function-accepting-any-object-type
  * @param {*} string 
  * @returns 
  */
-function hashCode(string) {
+function hashCodeString(string) {
     var hash = 0;
     for (var i = 0; i < string.length; i++) {
         var code = string.charCodeAt(i);
@@ -58,7 +60,8 @@ function hashCode(string) {
     return Number(hash);
 }
 
+
 module.exports = {
-    value: value,
-    hashCode,
+    hashCodeObject,
+    hashCodeString,
 }

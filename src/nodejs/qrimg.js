@@ -1,6 +1,8 @@
 "use strict";
 const QR = require("./mqrcode/mqrcode.cjs");
 const path = require("path");
+const fs = require('fs');
+const system = require("./system");
 
 /**
  * 保存二维码到。。。
@@ -11,7 +13,8 @@ const path = require("path");
  */
 function generateQR(ip, port, saveto) {
     // let p = "../../ui/assets/qrcode.png";
-    let p = "tsqrcode.png";
+    let tsm = system.getTimestamp();
+    let p = "tsqrcode-" + tsm + ".png";
     let fp = path.join(saveto, p)
     try {
         let content = String(ip) + ":" + String(port);

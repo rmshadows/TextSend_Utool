@@ -1,10 +1,12 @@
 "use strict";
 const { log } = require('console');
 const net = require('net');
-const Hashcode = require('./hashcode');
+const system = require('./system');
 const { Message } = require('./message');
 const profile = require("./profile");
 const crypto = require("./crypto");
+const Hashcode = require("./hashcode");
+
 
 /**
 参考：
@@ -24,10 +26,6 @@ let client_connected = false;
 // 网卡IP地址
 let net_ip = [];
 
-// 创建server
-let server = net.createServer();
-// 最大连接数
-server.maxConnections = 1;
 // 服务
 let serverLaunched = [];
 // 储存已链接的sockets
@@ -38,16 +36,19 @@ let connected = {};
  * @param {*} overwrite 是否覆盖原有
  */
 function createTsServer(port, overwrite = false) {
+    let server = undefined;
     if (serverLaunched.length == 0) {
-        const server = net.createServer();
+        server = net.createServer();
     } else {
         if (overwrite) {
             closeAllServers();
-            const server = net.createServer();
+            server = net.createServer();
         } else {
             console.log("createServer: 已有服务，不再启动");
         }
     }
+    // 最大连接数
+    server.maxConnections = 1;
     // 创建好开始配置
     // 客户端链接
     server.on('connection', (socket) => {
@@ -56,13 +57,15 @@ function createTsServer(port, overwrite = false) {
         // socket.pipe(process.stdout);
         let remoteIP = socket.address().address;
         // hash即客户端ID
-        let clientId = Hashcode.value(socket);
+        let clientId = Hashcode.hashCodeObject(socket);
+        // let clientId = system.hashCode(String(new Date().getTime()));
+        // console.log(clientId);
         console.log("<- client-connected   :" + remoteIP + "(" + clientId + ")");
         // 将id发给客户端(服务端发送ID到客户端，客户端发送支持的传输模式到服务端，由服务端决定使用什么模式)
         // node端使用JSON传输，Java直接传输类
         // [ '-200', '', '3566633025' ]
         let sendIdData = new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, clientId).getJSON();
-        // console.log("服务端分配ID：" + sendIdData);
+        console.log("服务端分配ID：" + sendIdData);
         socket.write(sendIdData);
         // 是否成功设置客户端模式
         let setClientMode = true;
@@ -120,11 +123,14 @@ function createTsServer(port, overwrite = false) {
                 data = crypto.decryptJSON(data);
                 if (data[0] == clientId) {
                     console.log("解密后：" + data);
+                } else {
+                    console.log("Drop:" + data);
                 }
             }
         });
 
         socket.on('end', () => {
+            // TODO:过滤断开的
             console.log('-> client-disconnected');
         });
 
@@ -207,9 +213,10 @@ function closeAllSockets() {
     for (let key in connected) {
         // console.log("key: " + key + " ,value: " + dic[key]);
         try {
-            const el = connected[key];
+            const el = connected[key][0];
             console.log("Closing socket: " + key);
             el.end();
+            el.destroy();
         } catch (error) {
             console.log("关闭Socket出错: " + error);
             s = false;

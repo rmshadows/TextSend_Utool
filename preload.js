@@ -7,6 +7,8 @@ const msystem = require("./src/nodejs/system");
 const crypto = require("./src/nodejs/crypto");
 const message = require("./src/nodejs/message");
 const qrcode = require("./src/nodejs/qrimg");
+const server = require("./src/nodejs/server");
+const client = require("./src/nodejs/client");
 
 /**
  * 返回本机IP地址
@@ -18,15 +20,28 @@ window.getIpAddr = function () {
 
 // window.Message = MSG;
 
+// 加密
 window.encrypt = function () {
   return msystem.getIpAddr();
 }
 
+
+// 启动服务端
+window.startServer = function(port) {
+  server.createTsServer(port);
+}
+
+// 停止服务
+window.stopServer = function() {
+  server.closeAllServers();
+}
+
+// 生成二维码图片地址
 window.getQrImgPath = function (ip, port) {
   return qrcode.generateQR(ip, port, utools.getPath("temp"));
 }
 
-
+// 获取临时目录
 window.getTempDir = function () {
   return utools.getPath("temp");
 }

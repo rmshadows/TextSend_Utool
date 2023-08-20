@@ -56,9 +56,13 @@ function randomNum(minNum, maxNum) {
 }
 
 
+function getTimestamp() {
+    return Number(new Date().getTime());
+}
 
 
 module.exports = {
     getIpAddr,
     randomNum,
+    getTimestamp,
 }

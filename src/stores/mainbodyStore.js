@@ -20,7 +20,8 @@ export const useMainbodyStore = defineStore('mainbody', {
         // 如果getter带参数，getter 将不再被缓存，它们只是一个被你调用的函数
         // 是否禁用模式切换按钮
         getDisableChangeModeBtn() {
-            if (this.isServerStart) {
+            // 启动服务但未链接时
+            if (this.isServerStart && !this.isConnected) {
                 return true;
             } else {
                 return false;
@@ -30,15 +31,24 @@ export const useMainbodyStore = defineStore('mainbody', {
     actions: {
         // TODO: 写完Node模块后补充
         // 服务端启动
-        async serverStart() {
-            this.setServerStat(true);
-            // 启动服务后会禁用切换按钮
-            this.setDisableChangeModeBtn(true);
+        async serverStart(port) {
+            // 启动服务
+            try {
+                await window.startServer(port);
+                this.setServerStart();
+            } catch (error) {
+                console.log("serverStart(): " + error);
+                mbStore.setServerStop();
+            }
         },
         // 服务端停止
         async serverStop() {
-            this.setServerStat(false);
-            this.setDisableChangeModeBtn(false);
+            try {
+                await window.stopServer();
+                this.setServerStop();
+            } catch (error) {
+                console.log("serverStop(): " + error);
+            }
         },
         // 客户端模式启动
         async clientStart(value) {
@@ -46,6 +56,24 @@ export const useMainbodyStore = defineStore('mainbody', {
         },
         // 客户端模式停止、断开
         async clientStop(value) {
+            // 这里是主动断开连接，停止客户端
+        },
+        setServerStart() {
+            this.setServerStat(true);
+            // 启动服务后会禁用切换按钮
+            this.setDisableChangeModeBtn(true);
+        },
+        // 服务端停止
+        setServerStop() {
+            this.setServerStat(false);
+            this.setDisableChangeModeBtn(false);
+        },
+        // 客户端模式启动
+        setClientStart(value) {
+            // 尝试连接
+        },
+        // 客户端模式停止、断开
+        setClientStop(value) {
             // 这里是主动断开连接，停止客户端
         },
         // 修改模式状态

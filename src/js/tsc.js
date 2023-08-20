@@ -1,3 +1,4 @@
+// 注意：这里不能使用pinia
 /**
  * 配置默认的IP
  * @param ref {IP数组} array 
@@ -12,7 +13,7 @@ export const getDefaultIpAddr = (array) => {
     // 再查找192.168
     for (let i = 0; i < array.length; i++) {
         if (array[i].value.includes("192.168.")) {
-            console.log("返回默认IP:" + array[i].value);
+            // console.log("返回默认IP:" + array[i].value);
             return array[i].value;
         }
     }
@@ -32,7 +33,7 @@ export const UgetIpAddrList = () => {
         let seel = { label: ips[i], value: ips[i] }
         ipA.push(seel);
     }
-    console.log("返回IP列表:" + ipA);
+    // console.log("返回IP列表:" + ipA);
     return ipA;
     // return [{
     //     "label": "127.0.0.1",
