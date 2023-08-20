@@ -53,8 +53,8 @@ class Message {
             }
         }
         // 处理ID和note (加随机数，冒号后面)
-        let id2e = String(this.getId() + ":" + randomNum(0, 5000));
-        let notes2e = String(this.getNotes() + ":" + randomNum(0, 5000));
+        let id2e = String(this.getId() + "☯☯" + randomNum(0, 5000));
+        let notes2e = String(this.getNotes() + "☯☯" + randomNum(0, 5000));
         this.json['id'] = this.encryptData(id2e);
         this.json['data'] = this.getDataArray();
         this.json['notes'] = this.encryptData(notes2e);

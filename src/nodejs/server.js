@@ -27,7 +27,7 @@ let net_ip = [];
 // 创建server
 let server = net.createServer();
 // 最大连接数
-server.maxConnections = 3;
+server.maxConnections = 1;
 // 服务
 let serverLaunched = [];
 // 储存已链接的sockets
@@ -58,17 +58,17 @@ function createTsServer(port, overwrite = false) {
         // hash即客户端ID
         let clientId = Hashcode.value(socket);
         console.log("<- client-connected   :" + remoteIP + "(" + clientId + ")");
-        // 将id发给客户端(服务端发送ID到客户端，客户端发送传输模式到服务端)
+        // 将id发给客户端(服务端发送ID到客户端，客户端发送支持的传输模式到服务端，由服务端决定使用什么模式)
         // node端使用JSON传输，Java直接传输类
         // [ '-200', '', '3566633025' ]
         let sendIdData = new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, clientId).getJSON();
         // console.log("服务端分配ID：" + sendIdData);
         socket.write(sendIdData);
-        // 是否获取客户端模式
-        let getClientMode = true;
-        // 客户端是否确认ID 确认格式：id(id:{random}):data(空):notes(CONFIRM-{$客户端模式}:{random})
-        // 注意，随机数在加密解密时已经去除 不能 :
-        let clientConfirm = false;
+        // 是否成功设置客户端模式
+        let setClientMode = true;
+        // 客户端确认ID 及返回支持的模式 确认格式：id(id:{random}):data(空):notes(SUPPORT-{$客户端模式☯☯{random})
+        // 注意，随机数在加密解密时已经去除
+        let clientConfirmId = false;
 
         // 设置客户端超时10秒（除非连接成功）
         socket.setTimeout(10000);
@@ -76,32 +76,35 @@ function createTsServer(port, overwrite = false) {
         // 客户端信息 data写在connection中
         socket.on('data', (data) => {
             // 首先使用JSON
-            // 分配ID -> 客户端返回接收到ID的确认(包含模式) -> 没有确认就断开连接 -> 确认就继续
-            if (getClientMode) {
+            // 分配ID -> 客户端返回接收到ID的确认(包含模式) -> 没有确认就断开连接 -> 确认就告知客户端模式后继续
+            if (setClientMode) {
                 // id data notes
                 data = crypto.decryptJSON(data);
                 // 先识别客户端头部
                 if (data != undefined && Number(data[0]) == clientId) {
                     try {
-                        let tsp = data[2].split("-"); // 分隔成 CONFIRM:{$客户端模式}
-                        if (tsp[0] == "CONFIRM") {
+                        let tsp = data[2].split("-"); // 分隔成 CONFIRM:{$客户端支持的模式}
+                        if (tsp[0] == "SUPPORT") {
                             // 客户端模式：0: java class 1:JSON
-                            let clientMode = Number(tsp[1]);
-                            // 模式要在0或者1才有效
-                            if ([0, 1].indexOf(clientMode) != -1) {
-                                // 如果成功设置模式
-                                getClientMode = false;
+                            let clientMode = selectClientMode(tsp[1]);
+                            if (clientMode != undefined) {
                                 // 添加连接
                                 connected[clientId] = [socket, clientMode];
                                 console.log("客户端模式：" + clientMode);
-                                clientConfirm = true;
+                                // 告知客户端模式选择
+                                socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON());
+                                clientConfirmId = true;
+                                // 如果成功设置模式
+                                setClientMode = false;
+                            } else {
+                                console.log("客户端似乎不支持JSON传输模式，断开...");
                             }
                         }
                     } catch (error) {
                         console.log("客户端ID确认失败或者客户端模式获取失败： " + error);
                     }
                     // 配置不成功就断开
-                    if (!clientConfirm) {
+                    if (!clientConfirmId) {
                         socket.end();
                         socket.destroy();
                     } else {
@@ -115,9 +118,10 @@ function createTsServer(port, overwrite = false) {
                 // 正常读取JSON
                 console.log("解密前：" + data);
                 data = crypto.decryptJSON(data);
-                console.log("解密后：" + data);
+                if (data[0] == clientId) {
+                    console.log("解密后：" + data);
+                }
             }
-            // TODO:node端自动发送json模式到其他端
         });
 
         socket.on('end', () => {
@@ -213,6 +217,27 @@ function closeAllSockets() {
     }
     if (s) {
         connected = [];
+    }
+}
+
+
+/**
+ * 返回首选的传输方式
+ * @param {*} supportMode {supportMode: [1]} 客户端提供的支持的模式
+ */
+function selectClientMode(supportMode) {
+    // 查看客户端是否支持JSON模式
+    let json = JSON.parse(supportMode);
+    let sm = json['supportMode']
+    for (const i in sm) {
+        sm[i] = Number(sm[i]);
+    }
+    if (sm.indexOf(1) == -1) {
+        // 不支持JSON模式的返回undefined
+        return undefined
+    } else {
+        // 因为Node端仅支持JSON传输，所以直接返回1
+        return 1;
     }
 }
 
