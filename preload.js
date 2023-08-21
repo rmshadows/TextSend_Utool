@@ -46,6 +46,23 @@ window.getTempDir = function () {
   return utools.getPath("temp");
 }
 
+// 返回服务器状态
+window.getServerStat = function(){
+  // console.log(server.serverStatus());
+  // TODO DEBUG
+  return server.serverStatus()[0];
+}
+
+const { contextBridge, ipcRenderer } = require('electron')
+
+// contextBridge.exposeInMainWorld('electronAPI', {
+//   handleCounter: (callback) => ipcRenderer.on('update-counter', callback)
+// });
+
+window.electronAPI = {
+  handleCounter: (callback) => ipcRenderer.on('update-counter', callback)
+}
+
 
 /**
  * 测试utools api输出

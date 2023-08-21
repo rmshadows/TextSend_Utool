@@ -27,6 +27,20 @@ export const useMainbodyStore = defineStore('mainbody', {
                 return false;
             }
         },
+        // 查询链接状态
+        // isConnectedValue() {
+        //     if (this.serverMode) {
+        //         if(window.getServerStat()[0] != 0){
+        //             // this.isConnected = true;
+        //             return true;
+        //         }else{
+        //             // this.isConnected = false;
+        //             return false;
+        //         }
+        //     } else {
+
+        //     }
+        // },
     },
     actions: {
         // TODO: 写完Node模块后补充
@@ -38,7 +52,7 @@ export const useMainbodyStore = defineStore('mainbody', {
                 this.setServerStart();
             } catch (error) {
                 console.log("serverStart(): " + error);
-                mbStore.setServerStop();
+                this.setServerStop();
             }
         },
         // 服务端停止

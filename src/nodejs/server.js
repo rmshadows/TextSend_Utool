@@ -1,11 +1,13 @@
 "use strict";
-const { log } = require('console');
 const net = require('net');
-const system = require('./system');
 const { Message } = require('./message');
 const profile = require("./profile");
 const crypto = require("./crypto");
 const Hashcode = require("./hashcode");
+const { app, ipcMain } = require('electron');
+const { BrowserWindow } = require('electron').remote;
+// TODO: IPC通信
+const path = require('path')
 
 
 /**
@@ -13,19 +15,6 @@ const Hashcode = require("./hashcode");
 http://zhenhua-lee.github.io/node/socket.html
 https://github.com/qufei1993/Nodejs-Roadmap/blob/master/docs/nodejs/net.md
  */
-// 服务运行的端口号
-let PORT = undefined;
-// 猜测的IP地址
-let Prefer_Addr = undefined;
-// Socket Server服务是否正在运行
-let is_running = false;
-// 作为客户端使用时，生成的Socket
-let client = null;
-// 客户端是否连接
-let client_connected = false;
-// 网卡IP地址
-let net_ip = [];
-
 // 服务
 let serverLaunched = [];
 // 储存已链接的sockets
@@ -36,6 +25,12 @@ let connected = {};
  * @param {*} overwrite 是否覆盖原有
  */
 function createTsServer(port, overwrite = false) {
+    const mainWindow = new BrowserWindow({
+        webPreferences: {
+            // contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'),
+        }
+    });
     let server = undefined;
     let clientId = undefined;
     if (serverLaunched.length == 0) {
@@ -169,6 +164,12 @@ function createTsServer(port, overwrite = false) {
 
     // 启动监听
     server.listen(port, () => {
+        // DEBUG
+        mainWindow.webContents.send('update-counter', 1);
+        console.log("aaaaaaaaaaaaaaaaaaaaaaaaaa");
+        ipcMain.on('counter-value', (_event, value) => {
+            console.log(value) // will print value to Node console
+        })
         console.log(`server is on ${JSON.stringify(server.address())}`);
         console.log(`服务已开启在 ${port}`);
     });
@@ -184,6 +185,7 @@ function serverStatus() {
     for (let key in connected) {
         console.log("当前已连接：" + key + " / " + String(connected[key]));
     }
+    return [serverLaunched.length, Object.keys(connected).length]
 }
 
 /**
@@ -258,5 +260,7 @@ module.exports = {
     closeAllServers,
     closeAllSockets,
     serverStatus,
+    serverLaunched,
+    connected,
 }
 

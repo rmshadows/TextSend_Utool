@@ -53,12 +53,13 @@
         </n-card>
       </n-modal>
     </div>
+    Current value: <strong id="counter">0</strong>
   </div>
 </template>
 
 <script setup>
 import { NInput, NButton, NSelect, NInputNumber, NTooltip, NCard, NModal } from "naive-ui";
-import { ref, reactive, computed } from "vue"
+import { ref, watch, reactive, computed } from "vue"
 import { useTextsendStore } from '../stores/textsendStore'
 import { useMainbodyStore } from '../stores/mainbodyStore'
 import { useQrStore } from '../stores/qrStore'
@@ -204,6 +205,17 @@ let launchBtnText = computed(() => tsStore.getLaunchBtnText);
 let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
 // 按钮状态
 let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
+// 链接状态从utools preload查询来
+// mbStore.isConnected = computed(() => mbStore.isConnectedValue);
+
+const counter = document.getElementById('counter')
+
+window.electronAPI.handleCounter((event, value) => {
+  const oldValue = Number(counter.innerText)
+  const newValue = oldValue + value
+  counter.innerText = newValue
+  event.sender.send('counter-value', newValue)
+});
 
 // 初始化
 updateIpAddrList();
