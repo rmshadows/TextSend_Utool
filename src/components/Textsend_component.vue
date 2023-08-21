@@ -136,8 +136,6 @@ const inputNumberUpdate = (value) => {
  * 下面是按钮事件
  */
 const btnLaunch = () => {
-  // TODO : DEBUG
-  // store.getters['textsenddata/getInputTextPlaceholder'];
   // 如果是服务端模式
   if (mbStore.serverMode) {
     // 如果服务启动状态

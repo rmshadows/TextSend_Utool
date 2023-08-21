@@ -37,6 +37,7 @@ let connected = {};
  */
 function createTsServer(port, overwrite = false) {
     let server = undefined;
+    let clientId = undefined;
     if (serverLaunched.length == 0) {
         server = net.createServer();
     } else {
@@ -57,7 +58,7 @@ function createTsServer(port, overwrite = false) {
         // socket.pipe(process.stdout);
         let remoteIP = socket.address().address;
         // hash即客户端ID
-        let clientId = Hashcode.hashCodeObject(socket);
+        clientId = Hashcode.hashCodeObject(socket);
         // let clientId = system.hashCode(String(new Date().getTime()));
         // console.log(clientId);
         console.log("<- client-connected   :" + remoteIP + "(" + clientId + ")");
@@ -94,6 +95,8 @@ function createTsServer(port, overwrite = false) {
                                 // 添加连接
                                 connected[clientId] = [socket, clientMode];
                                 console.log("客户端模式：" + clientMode);
+                                // 打印当前状态
+                                serverStatus();
                                 // 告知客户端模式选择
                                 socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON());
                                 clientConfirmId = true;
@@ -130,7 +133,8 @@ function createTsServer(port, overwrite = false) {
         });
 
         socket.on('end', () => {
-            // TODO:过滤断开的
+            // 过滤断开的
+            delete connected[clientId];
             console.log('-> client-disconnected');
         });
 
@@ -175,11 +179,11 @@ function createTsServer(port, overwrite = false) {
  * 服务器数量、连接数
  */
 function serverStatus() {
-    console.log("Server: " + serverLaunched.length + "  Sockets: " + connected.length);
+    console.log("Server: " + serverLaunched.length + "  Sockets: " + Object.keys(connected).length);
     // 打印Hash
-    // connected.forEach((ss) => {
-    //    console.log(hashCode(ss.toString())); 
-    // });
+    for (let key in connected) {
+        console.log("当前已连接：" + key + " / " + String(connected[key]));
+    }
 }
 
 /**
