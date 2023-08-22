@@ -4,10 +4,11 @@ const { Message } = require('./message');
 const profile = require("./profile");
 const crypto = require("./crypto");
 const Hashcode = require("./hashcode");
-const { app, ipcMain } = require('electron');
-const { BrowserWindow } = require('electron').remote;
+// const { app, ipcMain } = require('electron');
+// const { BrowserWindow } = require('electron').remote;
 // TODO: IPC通信
-const path = require('path')
+// const path = require('path')
+const { remote } = require('electron');
 
 
 /**
@@ -25,7 +26,8 @@ let connected = {};
  * @param {*} overwrite 是否覆盖原有
  */
 function createTsServer(port, overwrite = false) {
-    const mainWindow = new BrowserWindow({
+    // https://yuanliao.info/d/531-utools-api/8
+    const mainWindow = new remote.BrowserWindow({
         webPreferences: {
             // contextIsolation: true,
             preload: path.join(__dirname, 'preload.js'),
@@ -165,11 +167,11 @@ function createTsServer(port, overwrite = false) {
     // 启动监听
     server.listen(port, () => {
         // DEBUG
-        mainWindow.webContents.send('update-counter', 1);
-        console.log("aaaaaaaaaaaaaaaaaaaaaaaaaa");
-        ipcMain.on('counter-value', (_event, value) => {
-            console.log(value) // will print value to Node console
-        })
+        // mainWindow.webContents.send('update-counter', 1);
+        // console.log("aaaaaaaaaaaaaaaaaaaaaaaaaa");
+        // ipcMain.on('counter-value', (_event, value) => {
+        //     console.log(value) // will print value to Node console
+        // })
         console.log(`server is on ${JSON.stringify(server.address())}`);
         console.log(`服务已开启在 ${port}`);
     });

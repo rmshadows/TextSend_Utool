@@ -208,9 +208,11 @@ let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
 // 链接状态从utools preload查询来
 // mbStore.isConnected = computed(() => mbStore.isConnectedValue);
 
+
+// DEBUG
 const counter = document.getElementById('counter')
 
-window.electronAPI.handleCounter((event, value) => {
+window.handleCounter((event, value) => {
   const oldValue = Number(counter.innerText)
   const newValue = oldValue + value
   counter.innerText = newValue

@@ -5,10 +5,10 @@
   "author": "Ryan Yim",
   "homepage": "https://github.com/rmshadows/TextSend_Utool",
   "platform": ["win32", "linux"],
-  "main": "index.html",
-  "preload": "preload.js" ,
+  "main": "ui/index.html",
+  "preload": "tspreload.js" ,
   "development": {
-    "main": "ui/index.html"
+    "preload": "tspreload.js"
   },
   "logo": "logo.png",
   "features": [

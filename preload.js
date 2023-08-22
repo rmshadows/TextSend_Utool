@@ -1,68 +1,30 @@
-// 进入插件调用的
-// utools.onPluginEnter(({ code, type, payload, option }) => {
-//   console.log('用户进入插件应用', code, type, payload)
-// });
+// 进入插件调用的 刷新插件不会调用
+utools.onPluginEnter(({ code, type, payload, option }) => {
+  console.log('用户进入插件应用', code, type, payload);
+});
 
-const msystem = require("./src/nodejs/system");
-const crypto = require("./src/nodejs/crypto");
-const message = require("./src/nodejs/message");
-const qrcode = require("./src/nodejs/qrimg");
-const server = require("./src/nodejs/server");
-const client = require("./src/nodejs/client");
-
-/**
- * 返回本机IP地址
- * @returns 
- */
-window.getIpAddr = function () {
-  return msystem.getIpAddr();
-}
-
-// window.Message = MSG;
-
-// 加密
-window.encrypt = function () {
-  return msystem.getIpAddr();
-}
-
-
-// 启动服务端
-window.startServer = function(port) {
-  server.createTsServer(port);
-}
-
-// 停止服务
-window.stopServer = function() {
-  server.closeAllServers();
-}
-
-// 生成二维码图片地址
-window.getQrImgPath = function (ip, port) {
-  return qrcode.generateQR(ip, port, utools.getPath("temp"));
-}
-
-// 获取临时目录
-window.getTempDir = function () {
-  return utools.getPath("temp");
-}
-
-// 返回服务器状态
-window.getServerStat = function(){
-  // console.log(server.serverStatus());
-  // TODO DEBUG
-  return server.serverStatus()[0];
-}
-
-const { contextBridge, ipcRenderer } = require('electron')
-
-// contextBridge.exposeInMainWorld('electronAPI', {
-//   handleCounter: (callback) => ipcRenderer.on('update-counter', callback)
-// });
-
-window.electronAPI = {
-  handleCounter: (callback) => ipcRenderer.on('update-counter', callback)
-}
-
+// ui/index.html
+const ubWindow = utools.createBrowserWindow('ui/index.html', {
+  show: false,
+  title: '测试窗口',
+  webPreferences: {
+    preload: 'tspreload.js',
+    devTools: true,
+  }
+}, () => {
+  // 显示
+  ubWindow.show();
+  ubWindow.webContents.openDevTools();
+  // 向子窗口传递数据
+  ubWindow.webContents.send('ping')
+  require('electron').ipcRenderer.sendTo(ubWindow.webContents.id, 'ping')
+  // 执行脚本
+  ubWindow.executeJavaScript('fetch("https://jsonplaceholder.typicode.com/users/1").then(resp => resp.json())')
+    .then((result) => {
+      console.log(result) // Will be the JSON object from the fetch call
+    })
+})
+console.log(ubWindow);
 
 /**
  * 测试utools api输出
