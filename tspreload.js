@@ -1,9 +1,6 @@
 const msystem = require("./src/nodejs/system");
-const crypto = require("./src/nodejs/crypto");
-const message = require("./src/nodejs/message");
 const qrcode = require("./src/nodejs/qrimg");
 const server = require("./src/nodejs/server");
-const client = require("./src/nodejs/client");
 
 // 进入插件调用的 刷新插件不会调用
 // utools.onPluginEnter(({ code, type, payload, option }) => {
@@ -12,21 +9,14 @@ const client = require("./src/nodejs/client");
 
 
 const { ipcRenderer } = require('electron');
-
-// 暴露API给randerer
-window.handleCounter = function (callback) {
-  ipcRenderer.on('update-counter', callback);
-}
-
 // https://yuanliao.info/d/5873
-window.addEventListener('DOMContentLoaded', () => {
-  const counter = document.getElementById('counter')
-  ipcRenderer.on('update-counter', (_event, value) => {
-    const oldValue = Number(counter.innerText)
-    const newValue = oldValue + value
-    counter.innerText = newValue
-  })
-})
+// console.log(ipcRenderer);
+// console.log(require('electron'));
+// console.log(utools);
+window.ping = function (callback) {
+  console.log("Preload.js 设置Ping");
+  ipcRenderer.on('ping', callback);
+}
 
 
 /**

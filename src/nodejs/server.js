@@ -4,12 +4,6 @@ const { Message } = require('./message');
 const profile = require("./profile");
 const crypto = require("./crypto");
 const Hashcode = require("./hashcode");
-// const { app, ipcMain } = require('electron');
-// const { BrowserWindow } = require('electron').remote;
-// TODO: IPC通信
-// const path = require('path')
-const { remote } = require('electron');
-
 
 /**
 参考：
@@ -26,13 +20,45 @@ let connected = {};
  * @param {*} overwrite 是否覆盖原有
  */
 function createTsServer(port, overwrite = false) {
+    // TODO：IPC通信
+    // const ubWindow = utools.createBrowserWindow('ui/index.html', {
+    //     show: false,
+    //     title: '测试窗口',
+    //     webPreferences: {
+
+    //     }
+    // }, () => {
+    //     // 向子窗口传递数据
+    //     const { ipcRenderer } = require('electron');
+    //     console.log(ipcRenderer);
+    //     console.log(ubWindow.webContents);
+    //     let a = ubWindow.webContents.send("ping", 1);
+    //     console.log("IPC Main: 发送Ping");
+    // })
     // https://yuanliao.info/d/531-utools-api/8
-    const mainWindow = new remote.BrowserWindow({
+    // const { remote } = require('electron') ; new remote. BrowserWindow()
+    const ubWindow = utools.createBrowserWindow('ui/index.html', {
+        show: false,
+        title: '测试窗口',
         webPreferences: {
-            // contextIsolation: true,
-            preload: path.join(__dirname, 'preload.js'),
+            preload: 'tspreload.js'
         }
-    });
+      }, () => {
+        // 显示
+        ubWindow.show()
+        // 向子窗口传递数据 这里的ping只能在打开的窗口才能收到
+        ubWindow.webContents.send('ping', 1)
+        ubWindow.webContents.openDevTools();
+        // 执行脚本
+        ubWindow.executeJavaScript('fetch("https://jsonplaceholder.typicode.com/users/1").then(resp => resp.json())')
+          .then((result) => {
+            console.log(result) // Will be the JSON object from the fetch call
+          })
+      })
+      console.log(ubWindow)
+
+
+
     let server = undefined;
     let clientId = undefined;
     if (serverLaunched.length == 0) {
@@ -123,6 +149,12 @@ function createTsServer(port, overwrite = false) {
                 data = crypto.decryptJSON(data);
                 if (data[0] == clientId) {
                     console.log("解密后：" + data);
+                    // 直接粘贴
+                    // utools.hideMainWindowPasteText(data);
+                    // 使用utools API CTRL + V
+                    utools.hideMainWindowTypeString(data)
+                    // 收到消息 放入剪贴板 
+                    utools.copyText(data);
                 } else {
                     console.log("Drop:" + data);
                 }
@@ -168,10 +200,6 @@ function createTsServer(port, overwrite = false) {
     server.listen(port, () => {
         // DEBUG
         // mainWindow.webContents.send('update-counter', 1);
-        // console.log("aaaaaaaaaaaaaaaaaaaaaaaaaa");
-        // ipcMain.on('counter-value', (_event, value) => {
-        //     console.log(value) // will print value to Node console
-        // })
         console.log(`server is on ${JSON.stringify(server.address())}`);
         console.log(`服务已开启在 ${port}`);
     });

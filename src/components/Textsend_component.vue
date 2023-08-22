@@ -53,7 +53,6 @@
         </n-card>
       </n-modal>
     </div>
-    Current value: <strong id="counter">0</strong>
   </div>
 </template>
 
@@ -208,15 +207,9 @@ let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
 // 链接状态从utools preload查询来
 // mbStore.isConnected = computed(() => mbStore.isConnectedValue);
 
-
-// DEBUG
-const counter = document.getElementById('counter')
-
-window.handleCounter((event, value) => {
-  const oldValue = Number(counter.innerText)
-  const newValue = oldValue + value
-  counter.innerText = newValue
-  event.sender.send('counter-value', newValue)
+// DEBUG IPC R
+window.ping((event, value) => {
+  console.log("event" + "IPC Renderer: 接受Ping -> " + value);
 });
 
 // 初始化
