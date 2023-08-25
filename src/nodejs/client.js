@@ -4,12 +4,9 @@ const profile = require("./profile");
 const net = require('net');
 const crypto = require("./crypto");
 const { Message } = require("./message");
-const { unstableDynamicInputRtl } = require("naive-ui");
-const { log } = require("console");
-
-let Clients = [];
 
 function createTsClient(ip, port) {
+    profile.startStatus = 0;
     const client = net.connect(port, ip);
     client.setEncoding("utf-8");
     let getClientId = true;
@@ -24,7 +21,7 @@ function createTsClient(ip, port) {
     client.setTimeout(10000);
 
     client.on('connect', () => {
-        // client.write('client hello.');
+        console.log('client hello.');
     });
 
     client.on('timeout', () => {
@@ -57,36 +54,58 @@ function createTsClient(ip, port) {
                 // 设置超时一小时
                 client.setTimeout(3599999);
                 console.log("Client mode set at: " + clientModeset);
+                // 添加Socket到字典
+                profile.SOCKET_POOL[ID] = [client, clientModeset];
+                profile.startStatus = 1;
                 getMode = false;
                 client.write(new Message("test", profile.MSG_LEN, ID, undefined).getJSON());
             }
         } else {
+            // 如果ID来源服务器
             if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
-                console.log(data);
+                console.log("解密后：" + data);
+                // 直接粘贴
+                // utools.hideMainWindowPasteText(data);
+                // 使用utools API CTRL + V
+                utools.hideMainWindowTypeString(data[1])
+                // 收到消息 放入剪贴板 
+                utools.copyText(data[1]);
+            } else {
+                console.log("Client drop: " + data);
             }
         }
     });
 
     client.on('close', () => {
-        console.log('-> disconnected by server: ' + ip)
-    })
+        // 服务端断开
+        console.log('-> disconnected by server: ' + ip);
+        disconnectServer();
+    });
 
-    // 添加到列表
-    Clients.push(client);
+    client.on('error', function (ex) {
+        console.log("Client error: " + ex);
+        profile.startStatus = 2;
+    });
 }
 
 
 
 // 断开所有连接
 function disconnectServer() {
-    for (let i = 0; i < Clients.length; i++) {
-        const el = Clients[i];
+    let s = true;
+    for (let key in profile.SOCKET_POOL) {
         try {
+            const el = profile.SOCKET_POOL[key][0];
+            console.log("Closing client socket: " + key);
             el.end();
             el.destroy();
         } catch (error) {
-            console.log(error);
+            console.log("关闭Client Socket出错: " + error);
+            s = false;
         }
+    }
+    if (s) {
+        profile.SOCKET_POOL = [];
     }
 }
 

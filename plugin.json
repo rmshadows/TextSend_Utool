@@ -26,6 +26,6 @@
     }
   ],
   "pluginSetting": {
-    "single": true
+    "single": false
   }
 }

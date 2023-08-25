@@ -7,11 +7,20 @@ const SERVER_ID = -200;
 const FB_MSG = "cn.rmshadows.TextSend.ServerStatusFeedback";
 // 单个Msg拆分的长度
 const MSG_LEN = 1000;
+// 服务器列表
+let SERVER_POOL = [];
+// Socket连接列表（服务端+客户端） [socket, clientMode]
+let SOCKET_POOL = {};
+// 是否成功启动（客户端也能使用） -1初始化 0正在启动 1启动成功 2启动失败
+let startStatus = -1;
 
 module.exports = {
     AES_TOKEN,
     SERVER_ID,
     FB_MSG,
     MSG_LEN,
+    SERVER_POOL,
+    SOCKET_POOL,
+    startStatus,
 }
 

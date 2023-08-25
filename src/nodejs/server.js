@@ -10,58 +10,28 @@ const Hashcode = require("./hashcode");
 http://zhenhua-lee.github.io/node/socket.html
 https://github.com/qufei1993/Nodejs-Roadmap/blob/master/docs/nodejs/net.md
  */
-// 服务
-let serverLaunched = [];
-// 储存已链接的sockets
-let connected = {};
-
 /**
  * 启动socket服务 只允许一个
  * @param {*} overwrite 是否覆盖原有
  */
-function createTsServer(port, overwrite = false) {
-    // TODO：IPC通信
+function createTsServer(port, maxConnections = 1, overwrite = false) {
+    // IPC通信，未使用
     // const ubWindow = utools.createBrowserWindow('ui/index.html', {
     //     show: false,
     //     title: '测试窗口',
     //     webPreferences: {
-
+    //         preload: 'tspreload.js'
     //     }
-    // }, () => {
+    //   }, () => {
     //     // 向子窗口传递数据
     //     const { ipcRenderer } = require('electron');
-    //     console.log(ipcRenderer);
-    //     console.log(ubWindow.webContents);
     //     let a = ubWindow.webContents.send("ping", 1);
     //     console.log("IPC Main: 发送Ping");
-    // })
-    // https://yuanliao.info/d/531-utools-api/8
-    // const { remote } = require('electron') ; new remote. BrowserWindow()
-    const ubWindow = utools.createBrowserWindow('ui/index.html', {
-        show: false,
-        title: '测试窗口',
-        webPreferences: {
-            preload: 'tspreload.js'
-        }
-      }, () => {
-        // 显示
-        ubWindow.show()
-        // 向子窗口传递数据 这里的ping只能在打开的窗口才能收到
-        ubWindow.webContents.send('ping', 1)
-        ubWindow.webContents.openDevTools();
-        // 执行脚本
-        ubWindow.executeJavaScript('fetch("https://jsonplaceholder.typicode.com/users/1").then(resp => resp.json())')
-          .then((result) => {
-            console.log(result) // Will be the JSON object from the fetch call
-          })
-      })
-      console.log(ubWindow)
-
-
-
+    //   })
+    profile.startStatus = 0;
     let server = undefined;
     let clientId = undefined;
-    if (serverLaunched.length == 0) {
+    if (profile.SERVER_POOL.length == 0) {
         server = net.createServer();
     } else {
         if (overwrite) {
@@ -72,7 +42,7 @@ function createTsServer(port, overwrite = false) {
         }
     }
     // 最大连接数
-    server.maxConnections = 1;
+    server.maxConnections = maxConnections;
     // 创建好开始配置
     // 客户端链接
     server.on('connection', (socket) => {
@@ -81,10 +51,14 @@ function createTsServer(port, overwrite = false) {
         // socket.pipe(process.stdout);
         let remoteIP = socket.address().address;
         // hash即客户端ID
-        clientId = Hashcode.hashCodeObject(socket);
+        let th = {
+            "Socket": socket,
+            "Time": new Date().getTime()
+        };
+        clientId = Hashcode.hashCodeObject(th);
         // let clientId = system.hashCode(String(new Date().getTime()));
         // console.log(clientId);
-        console.log("<- client-connected   :" + remoteIP + "(" + clientId + ")");
+        console.log("<- client-profile.SOCKET_POOL   :" + remoteIP + "(" + clientId + ")");
         // 将id发给客户端(服务端发送ID到客户端，客户端发送支持的传输模式到服务端，由服务端决定使用什么模式)
         // node端使用JSON传输，Java直接传输类
         // [ '-200', '', '3566633025' ]
@@ -116,10 +90,10 @@ function createTsServer(port, overwrite = false) {
                             let clientMode = selectClientMode(tsp[1]);
                             if (clientMode != undefined) {
                                 // 添加连接
-                                connected[clientId] = [socket, clientMode];
+                                profile.SOCKET_POOL[clientId] = [socket, clientMode];
                                 console.log("客户端模式：" + clientMode);
-                                // 打印当前状态
-                                serverStatus();
+                                // 打印当前状态 preload
+                                window.getConnectionStat();
                                 // 告知客户端模式选择
                                 socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON());
                                 clientConfirmId = true;
@@ -147,24 +121,24 @@ function createTsServer(port, overwrite = false) {
                 // 正常读取JSON
                 console.log("解密前：" + data);
                 data = crypto.decryptJSON(data);
-                if (data[0] == clientId) {
+                if (data != undefined && Number(data[0]) == clientId) {
                     console.log("解密后：" + data);
                     // 直接粘贴
                     // utools.hideMainWindowPasteText(data);
                     // 使用utools API CTRL + V
-                    utools.hideMainWindowTypeString(data)
+                    utools.hideMainWindowTypeString(data[1])
                     // 收到消息 放入剪贴板 
-                    utools.copyText(data);
+                    utools.copyText(data[1]);
                 } else {
-                    console.log("Drop:" + data);
+                    console.log("Server drop:" + data);
                 }
             }
         });
 
         socket.on('end', () => {
             // 过滤断开的
-            delete connected[clientId];
-            console.log('-> client-disconnected');
+            delete profile.SOCKET_POOL[clientId];
+            console.log('-> client-disprofile.SOCKET_POOL');
         });
 
         socket.on('timeout', () => {
@@ -191,31 +165,29 @@ function createTsServer(port, overwrite = false) {
     // 超出连接数量限制
     server.on('drop', (data) => {
         console.log('服务器拒绝连接: ' + JSON.stringify(data));
-    })
-
-    // 添加到服务器列表
-    serverLaunched.push(server);
+    });
 
     // 启动监听
     server.listen(port, () => {
-        // DEBUG
-        // mainWindow.webContents.send('update-counter', 1);
         console.log(`server is on ${JSON.stringify(server.address())}`);
         console.log(`服务已开启在 ${port}`);
+        // 设置成功启动
+        profile.startStatus = 1;
     });
-}
-
-
-/**
- * 服务器数量、连接数
- */
-function serverStatus() {
-    console.log("Server: " + serverLaunched.length + "  Sockets: " + Object.keys(connected).length);
-    // 打印Hash
-    for (let key in connected) {
-        console.log("当前已连接：" + key + " / " + String(connected[key]));
-    }
-    return [serverLaunched.length, Object.keys(connected).length]
+    // 错误
+    server.on('error', (e) => {
+        console.log(e);
+        profile.startStatus = 2;
+        // 出现错误才会从列表中移除
+        closeAllServers();
+        // if (e.code === 'EADDRINUSE') {
+        //     console.error('Address in use, retrying...');
+        // } else {
+        //     console.log(e);
+        // }
+    });
+    // 添加到服务器列表 (不管是否成功启动，先添加)
+    profile.SERVER_POOL.push(server);
 }
 
 /**
@@ -226,9 +198,9 @@ function closeAllServers() {
     // 首先得关闭所有socket
     closeAllSockets();
     // 再关闭server
-    for (let i = 0; i < serverLaunched.length; i++) {
+    for (let i = 0; i < profile.SERVER_POOL.length; i++) {
         try {
-            const el = serverLaunched[i];
+            const el = profile.SERVER_POOL[i];
             el.close();
         } catch (error) {
             console.log("关闭Server出错: " + error);
@@ -237,7 +209,7 @@ function closeAllServers() {
     }
     // 没出错再清零
     if (s) {
-        serverLaunched = [];
+        profile.SERVER_POOL = [];
     }
 }
 
@@ -246,10 +218,10 @@ function closeAllServers() {
  */
 function closeAllSockets() {
     let s = true;
-    for (let key in connected) {
+    for (let key in profile.SOCKET_POOL) {
         // console.log("key: " + key + " ,value: " + dic[key]);
         try {
-            const el = connected[key][0];
+            const el = profile.SOCKET_POOL[key][0];
             console.log("Closing socket: " + key);
             el.end();
             el.destroy();
@@ -259,7 +231,7 @@ function closeAllSockets() {
         }
     }
     if (s) {
-        connected = [];
+        profile.SOCKET_POOL = [];
     }
 }
 
@@ -289,8 +261,5 @@ module.exports = {
     createTsServer,
     closeAllServers,
     closeAllSockets,
-    serverStatus,
-    serverLaunched,
-    connected,
 }
 

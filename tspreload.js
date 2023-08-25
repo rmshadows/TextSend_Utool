@@ -1,22 +1,22 @@
 const msystem = require("./src/nodejs/system");
 const qrcode = require("./src/nodejs/qrimg");
 const server = require("./src/nodejs/server");
+const client = require("./src/nodejs/client");
+const profile = require("./src/nodejs/profile");
+const { Message } = require("./src/nodejs/message");
 
 // 进入插件调用的 刷新插件不会调用
 // utools.onPluginEnter(({ code, type, payload, option }) => {
 //   console.log('用户进入插件应用', code, type, payload);
 // });
 
-
-const { ipcRenderer } = require('electron');
-// https://yuanliao.info/d/5873
-// console.log(ipcRenderer);
-// console.log(require('electron'));
-// console.log(utools);
-window.ping = function (callback) {
-  console.log("Preload.js 设置Ping");
-  ipcRenderer.on('ping', callback);
-}
+// IPC通信，未使用
+// const { ipcRenderer } = require('electron');
+// // https://yuanliao.info/d/5873
+// window.ping = function (callback) {
+//   console.log("Preload.js 设置Ping");
+//   ipcRenderer.on('ping', callback);
+// }
 
 
 /**
@@ -27,23 +27,60 @@ window.getIpAddr = function () {
   return msystem.getIpAddr();
 }
 
-// window.Message = MSG;
-
-// 加密
-window.encrypt = function () {
-  return msystem.getIpAddr();
-}
-
 
 // 启动服务端
-window.startServer = function (port) {
-  server.createTsServer(port);
+window.startServer = function (port, maxConnections = 1) {
+  server.createTsServer(port, maxConnections);
 }
 
 // 停止服务
 window.stopServer = function () {
   server.closeAllServers();
 }
+
+
+// 客户端连接
+window.startClient = function (ip, port) {
+  client.createTsClient(ip, port);
+}
+
+// 客户端断开
+window.stopClient = function () {
+  client.disconnectServer();
+}
+
+
+window.serverSend = function (msgString) {
+  // 会发送给所有连接的客户端
+  for (let key in profile.SOCKET_POOL) {
+    try {
+      // 因为NODE端只能发送JSON所以不用考虑参数2
+      const el = profile.SOCKET_POOL[key][0];
+      let toSend = new Message(msgString, profile.MSG_LEN, profile.SERVER_ID, undefined).getJSON();
+      console.log("Server send message(" + key + "): " + msgString + " => " + toSend);
+      el.write(toSend);
+    } catch (error) {
+      console.log("serverSend: " + error);
+    }
+  }
+}
+
+
+window.clientSend = function (msgString) {
+  // 会发送给所有连接的服务器
+  for (let key in profile.SOCKET_POOL) {
+    try {
+      // 因为NODE端只能发送JSON所以不用考虑参数2
+      const el = profile.SOCKET_POOL[key][0];
+      let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
+      console.log("Server send message(" + key + "): " + msgString + " => " + toSend);
+      el.write(toSend);
+    } catch (error) {
+      console.log("serverSend: " + error);
+    }
+  }
+}
+
 
 // 生成二维码图片地址
 window.getQrImgPath = function (ip, port) {
@@ -55,11 +92,37 @@ window.getTempDir = function () {
   return utools.getPath("temp");
 }
 
-// 返回服务器状态
-window.getServerStat = function () {
-  // console.log(server.serverStatus());
-  // TODO DEBUG
-  return server.serverStatus()[0];
+/**
+ * 返回服务器状态 服务器数量、连接数
+ * @returns 
+ */
+window.getConnectionStat = function () {
+  console.log("Server: " + profile.SERVER_POOL.length + "  Sockets(server+client): "
+    + Object.keys(profile.SOCKET_POOL).length);
+  // 打印Hash
+  for (let key in profile.SOCKET_POOL) {
+    console.log("当前已连接：" + key + " / " + String(profile.SOCKET_POOL[key]));
+  }
+  // 服务器数量、连接数
+  return [profile.SERVER_POOL.length, Object.keys(profile.SOCKET_POOL).length]
+}
+
+
+// 返回服务启动是否报错(True为成功)
+window.startSuccessful = function () {
+  if(profile.startStatus == 1){
+    console.log("Start successful.");
+  }else if(profile.startStatus == 0){
+    console.log("Starting...");
+  }else if(profile.startStatus == 2){
+    console.log("Start failed.");
+  }
+  return profile.startStatus;
+}
+
+// 设置profile.startStatus参数
+window.setStartStatus = function(value){
+  profile.startStatus = value;
 }
 
 

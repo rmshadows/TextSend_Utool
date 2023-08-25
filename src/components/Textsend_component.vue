@@ -37,7 +37,7 @@
         </n-tooltip>
       </span>
       <!-- 按钮组 -->
-      <n-button size="large" class="button" @click="btnLaunch">
+      <n-button size="large" class="button" @click="btnLaunch" @contextmenu="btnLaunchContextMenu">
         <span v-html="launchBtnText"></span></n-button>
       <n-button size="large" class="button" @click="btnChangeMode" :disabled="changeModeBtnStat">
         <span v-html="changeModeBtnText"></span></n-button>
@@ -62,12 +62,30 @@ import { ref, watch, reactive, computed } from "vue"
 import { useTextsendStore } from '../stores/textsendStore'
 import { useMainbodyStore } from '../stores/mainbodyStore'
 import { useQrStore } from '../stores/qrStore'
+import { useMessage } from 'naive-ui'
 import * as js from "../js/tsc"
+
 
 // 可以在组件中的任意位置访问 `store` 变量 ✨
 const tsStore = useTextsendStore();
 const mbStore = useMainbodyStore();
 const qrStore = useQrStore();
+
+// 弹窗
+// const message = useMessage();
+// 为了在setup外使用
+window.$message = useMessage();
+
+// 错误弹窗(写在js文件了)
+// const errorMessage = (error) => {
+//   message.error(
+//     error,
+//     {
+//       closable: true,
+//       duration: 5000
+//     }
+//   )
+// }
 
 // 定义函数
 // 文本框
@@ -130,12 +148,11 @@ const portNumberValidator = (x) => x > 0;
 const inputNumberUpdate = (value) => {
   tsStore.setPortNumberValue(value);
 }
-
-
 /**
- * 下面是按钮事件
+ * 启动按钮事件
+ * @param {*} oneClient 仅允许一个客户端连接
  */
-const btnLaunch = () => {
+const lanuchBtnEvent = (oneClient = true) => {
   // 如果是服务端模式
   if (mbStore.serverMode) {
     // 如果服务启动状态
@@ -145,7 +162,12 @@ const btnLaunch = () => {
       qrStore.setQrImgDefaultValue();
     } else {
       // 启动Socket
-      mbStore.serverStart(tsStore.portNumber);
+      if (oneClient) {
+        mbStore.serverStart(tsStore.portNumber, 1);
+      } else {
+        // 允许7个
+        mbStore.serverStart(tsStore.portNumber, 7);
+      }
       // 生成二维码 并修改二维码图片
       let qrpath = js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber);
       // 等待二维码生成再更改图片
@@ -157,26 +179,56 @@ const btnLaunch = () => {
     // 客户端模式
     // 如果是连接状态
     if (mbStore.isConnected) {
-      // TODO：断开链接（状态在方法在设置）
+      // 断开链接
+      mbStore.clientStop();
     } else {
-      // TODO:链接服务端
-
+      // 链接服务端
+      // 获取IP
+      let addr = tsStore.inputText;
+      let i = undefined;
+      let p = undefined;
+      if (addr.indexOf(":") == -1) {
+        // 没有端口号
+        p = 54300;
+        i = tsStore.inputText;
+      } else {
+        addr = addr.split(":");
+        i = addr[0];
+        i = addr[1];
+      }
+      mbStore.clientStart(i, p);
     }
   }
 }
+
+
+/**
+ * 下面是按钮事件
+ */
+const btnLaunch = () => {
+  lanuchBtnEvent(true);
+}
+const btnLaunchContextMenu = () => {
+  lanuchBtnEvent(false);
+}
 const btnChangeMode = () => {
-  if (mbStore.isServerStart) {
-    // 如果服务模式启动，禁用切换按钮
-    console.log("服务启动，禁止切换模式");
+  /**
+   * 1.切换模式
+   * 2.服务端发送
+   * 3.客户端发送
+   */
+  if (mbStore.disableChangeModeBtn) {
+    console.log("按钮已禁用。");
+  } else if (mbStore.serverMode && mbStore.isConnected) {
+    // 服务端模式 且已连接
+    // console.log("Server send message.");
+    window.serverSend(tsStore.inputText);
+  } else if (!mbStore.serverMode && mbStore.isConnected) {
+    // 客户端模式 且已连接
+    // console.log("Client send msg.");
+    window.clientSend(tsStore.inputText);
   } else {
-    // 如果服务模式停止，启用切换按钮
-    if (mbStore.isConnected) {
-      // 链接状态，可发送文字
-      // TODO: 发送文字
-    } else {
-      // 如果未连接状态，可切换模式
-      mbStore.changeServerMode();
-    }
+    mbStore.changeServerMode();
   }
 }
 const btnAbout = () => {
@@ -204,13 +256,15 @@ let launchBtnText = computed(() => tsStore.getLaunchBtnText);
 let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
 // 按钮状态
 let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
-// 链接状态从utools preload查询来
-// mbStore.isConnected = computed(() => mbStore.isConnectedValue);
+let showError = computed(() => tsStore.showError);
 
-// DEBUG IPC R
-window.ping((event, value) => {
-  console.log("event" + "IPC Renderer: 接受Ping -> " + value);
-});
+
+
+
+// IPC通信，未使用
+// window.ping((event, value) => {
+//   console.log("event" + "IPC Renderer: 接受Ping -> " + value);
+// });
 
 // 初始化
 updateIpAddrList();

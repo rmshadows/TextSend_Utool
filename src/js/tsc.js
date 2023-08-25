@@ -21,12 +21,21 @@ export const getDefaultIpAddr = (array) => {
 }
 
 
+// 显示错误信息
+export const errorHandler = (error) => {
+    // 需要确保已经在 setup 中执行了 window.$message = message
+    window.$message.error(error, {
+        closable: true,
+        duration: 5000
+    });
+}
+
+
 // U开头表示借助preload脚本的函数
 /**
  * 更新IP地址列表(选择框) / U
  */
 export const UgetIpAddrList = () => {
-    // TODO:DEBUG
     let ips = window.getIpAddr();
     let ipA = [];
     for (let i = 0; i < ips.length; i++) {
@@ -35,22 +44,6 @@ export const UgetIpAddrList = () => {
     }
     // console.log("返回IP列表:" + ipA);
     return ipA;
-    // return [{
-    //     "label": "127.0.0.1",
-    //     "value": "127.0.0.1"
-    // },
-    // {
-    //     "label": "::a",
-    //     "value": "::a"
-    // },
-    // {
-    //     "label": "::b",
-    //     "value": "::b"
-    // },
-    // {
-    //     "label": "192.168.30.126",
-    //     "value": "192.168.30.126"
-    // }];
 }
 
 

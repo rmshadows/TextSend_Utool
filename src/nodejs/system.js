@@ -1,7 +1,7 @@
 "use strict";
 
 const os = require("os");
-const L  = require('list'); 
+const L = require('list');
 
 /**
  * 获取IP
@@ -53,6 +53,50 @@ function randomNum(minNum, maxNum) {
             return 0;
             break;
     }
+}
+
+
+/**
+ * 定时器 + Promise 实现 sleep
+ * https://cloud.tencent.com/developer/article/1802782
+// async await 的方式
+async function test() {
+  console.log(1);
+  await promiseSleep(3000);
+  console.log(2);
+}
+
+// Promise 的链式调用方式
+async function test() {
+  console.log(1);
+  promiseSleep(3000).then(() => {
+    console.log(2);
+  });
+}
+ * @param {*} ms 
+ * @returns 
+ */
+const promiseSleep = (ms) => {
+    new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+
+/**
+ * 真正的阻塞事件循环，阻塞线程直到超时，不要在主线程上使用 
+ * https://cloud.tencent.com/developer/article/1802782
+ * @param {Number} ms delay
+ * @returns {String} ok|not-equal|timed-out
+ */
+function realSleep(ms) {
+    const valid = ms > 0 && ms < Infinity;
+    if (valid === false) {
+        if (typeof ms !== 'number' && typeof ms !== 'bigint') {
+            throw TypeError('ms must be a number');
+        }
+        throw RangeError('ms must be a number that is greater than 0 but less than Infinity');
+    }
+    return Atomics.wait(int32, 0, 0, Number(ms))
 }
 
 
