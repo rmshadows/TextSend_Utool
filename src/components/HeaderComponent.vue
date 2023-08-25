@@ -1,6 +1,6 @@
 <template>
   <div class="header-component">
-    <div class="textsend-title">Textsend uTools</div>
+    <div class="textsend-title">Textsend for uTools</div>
   </div>
 </template>
 

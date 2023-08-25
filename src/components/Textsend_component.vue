@@ -20,7 +20,7 @@
             <n-select :value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
               @update-show="updateIpAddrList" />
           </template>
-          请选择本机IP
+          请选择本机IP(暂不支持IPv6)
         </n-tooltip>
       </span>
       <!-- 选择端口 -->

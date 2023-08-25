@@ -13,14 +13,14 @@
   "logo": "logo.png",
   "features": [
     {
-      "code": "textsend",
-      "explain": "局域网文字传输",
+      "code": "debug-code",
+      "explain": "debug-explain",
       "cmds": [ 
+        "debug",
         "Textsend",
         "TextSend",
         "Textsend-uTools",
-        "文字传输",
-        "ts"
+        "文字传输"
       ],
       "icon": "logo.png"
     }

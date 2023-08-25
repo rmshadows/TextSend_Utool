@@ -73,10 +73,10 @@ window.clientSend = function (msgString) {
       // 因为NODE端只能发送JSON所以不用考虑参数2
       const el = profile.SOCKET_POOL[key][0];
       let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
-      console.log("Server send message(" + key + "): " + msgString + " => " + toSend);
+      console.log("Client send message(" + key + "): " + msgString + " => " + toSend);
       el.write(toSend);
     } catch (error) {
-      console.log("serverSend: " + error);
+      console.log("clientSend: " + error);
     }
   }
 }
@@ -107,21 +107,32 @@ window.getConnectionStat = function () {
   return [profile.SERVER_POOL.length, Object.keys(profile.SOCKET_POOL).length]
 }
 
+// 调用检查是否要清空文字
+window.getMsgFeedbackStat = function () {
+  return profile.clearText;
+}
+
+// 设置清空文字的状态
+window.setClearStat = function (value) {
+  if (profile.clearText != value) {
+    profile.clearText = value;
+  }
+}
 
 // 返回服务启动是否报错(True为成功)
 window.startSuccessful = function () {
-  if(profile.startStatus == 1){
+  if (profile.startStatus == 1) {
     console.log("Start successful.");
-  }else if(profile.startStatus == 0){
+  } else if (profile.startStatus == 0) {
     console.log("Starting...");
-  }else if(profile.startStatus == 2){
+  } else if (profile.startStatus == 2) {
     console.log("Start failed.");
   }
   return profile.startStatus;
 }
 
 // 设置profile.startStatus参数
-window.setStartStatus = function(value){
+window.setStartStatus = function (value) {
   profile.startStatus = value;
 }
 

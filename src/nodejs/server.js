@@ -122,13 +122,20 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
                 console.log("解密前：" + data);
                 data = crypto.decryptJSON(data);
                 if (data != undefined && Number(data[0]) == clientId) {
-                    console.log("解密后：" + data);
-                    // 直接粘贴
-                    // utools.hideMainWindowPasteText(data);
-                    // 使用utools API CTRL + V
-                    utools.hideMainWindowTypeString(data[1])
-                    // 收到消息 放入剪贴板 
-                    utools.copyText(data[1]);
+                    if (data[2] == profile.FB_MSG) {
+                        // 设置清空文本框
+                        profile.clearText = true;
+                    } else {
+                        console.log("解密后：" + data);
+                        // 直接粘贴
+                        // utools.hideMainWindowPasteText(data);
+                        // 使用utools API CTRL + V
+                        utools.hideMainWindowTypeString(data[1])
+                        // 收到消息 放入剪贴板 
+                        utools.copyText(data[1]);
+                        // 发送反馈(反馈写在notes)
+                        serverFeedback();
+                    }
                 } else {
                     console.log("Server drop:" + data);
                 }
@@ -136,6 +143,8 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
         });
 
         socket.on('end', () => {
+            // 断开复原
+            profile.clearText = false;
             // 过滤断开的
             delete profile.SOCKET_POOL[clientId];
             console.log('-> client-disprofile.SOCKET_POOL');
@@ -159,6 +168,8 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
 
     // 会在所有连接断开后执行
     server.on('close', () => {
+        // 断开复原
+        profile.clearText = false;
         console.log('服务器已关闭: SERVER SHUTDOWN');
     })
 
@@ -188,6 +199,23 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
     });
     // 添加到服务器列表 (不管是否成功启动，先添加)
     profile.SERVER_POOL.push(server);
+}
+
+// 服务端反馈
+function serverFeedback() {
+    for (let key in profile.SOCKET_POOL) {
+        try {
+            // 因为NODE端只能发送JSON所以不用考虑参数2
+            const el = profile.SOCKET_POOL[key][0];
+            let toSend = new Message(undefined,
+                profile.MSG_LEN,
+                profile.SERVER_ID,
+                profile.FB_MSG).getJSON();
+            el.write(toSend);
+        } catch (error) {
+            console.log("server feedback: " + error);
+        }
+    }
 }
 
 /**

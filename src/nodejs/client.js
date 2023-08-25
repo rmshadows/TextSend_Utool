@@ -64,12 +64,19 @@ function createTsClient(ip, port) {
             // 如果ID来源服务器
             if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
                 console.log("解密后：" + data);
-                // 直接粘贴
-                // utools.hideMainWindowPasteText(data);
-                // 使用utools API CTRL + V
-                utools.hideMainWindowTypeString(data[1])
-                // 收到消息 放入剪贴板 
-                utools.copyText(data[1]);
+                if (data[2] == profile.FB_MSG) {
+                    // 设置清空文本框
+                    profile.clearText = true;
+                } else {
+                    // 直接粘贴
+                    // utools.hideMainWindowPasteText(data);
+                    // 使用utools API CTRL + V
+                    utools.hideMainWindowTypeString(data[1])
+                    // 收到消息 放入剪贴板 
+                    utools.copyText(data[1]);
+                    // 反馈
+                    clientFeedback();
+                }
             } else {
                 console.log("Client drop: " + data);
             }
@@ -77,6 +84,8 @@ function createTsClient(ip, port) {
     });
 
     client.on('close', () => {
+        // 断开复原
+        profile.clearText = false;
         // 服务端断开
         console.log('-> disconnected by server: ' + ip);
         disconnectServer();
@@ -88,6 +97,22 @@ function createTsClient(ip, port) {
     });
 }
 
+// 客户端反馈
+function clientFeedback() {
+    for (let key in profile.SOCKET_POOL) {
+        try {
+            // 因为NODE端只能发送JSON所以不用考虑参数2
+            const el = profile.SOCKET_POOL[key][0];
+            let toSend = new Message(undefined,
+                profile.MSG_LEN,
+                key,
+                profile.FB_MSG).getJSON();
+            el.write(toSend);
+        } catch (error) {
+            console.log("client feedback: " + error);
+        }
+    }
+}
 
 
 // 断开所有连接

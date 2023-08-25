@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { useQrStore } from './qrStore';
+import { useTextsendStore } from './textsendStore';
 import { errorHandler } from "../js/tsc";
 
 // 你可以对 `defineStore()` 的返回值进行任意命名，但最好使用 store 的名字，同时以 `use` 开头且以 `Store` 结尾。(比如 `useUserStore`，`useCartStore`，`useProductStore`)
@@ -10,7 +11,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "0.0.2",
+            version: "0.0.4",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来
@@ -116,6 +117,14 @@ export const useMainbodyStore = defineStore('mainbody', {
                     // 如果连接不为0
                     if (window.getConnectionStat()[1] != 0) {
                         this.setConnectStat(true);
+                        // Socket在的情况下，如果收到反馈，清空文字
+                        if (window.getMsgFeedbackStat()) {
+                            const tsStore = useTextsendStore();
+                            tsStore.setInputValueSync("");
+                            // console.log("清空文字");
+                            // 复原
+                            window.setClearStat(false);
+                        }
                     } else {
                         this.setConnectStat(false);
                     }
@@ -131,6 +140,14 @@ export const useMainbodyStore = defineStore('mainbody', {
                     // 如果连接不为0 
                     if (window.getConnectionStat()[1] != 0) {
                         this.setConnectStat(true);
+                        // Socket在的情况下，如果收到反馈，清空文字
+                        if (window.getMsgFeedbackStat()) {
+                            const tsStore = useTextsendStore();
+                            tsStore.setInputValueSync("");
+                            // console.log("清空文字");
+                            // 复原
+                            window.setClearStat(false);
+                        }
                         setTimeout(() => {
                             this.getNodeSocketsConnectStat(gap);
                         }, gap);

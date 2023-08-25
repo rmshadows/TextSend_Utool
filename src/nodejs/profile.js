@@ -13,6 +13,8 @@ let SERVER_POOL = [];
 let SOCKET_POOL = {};
 // 是否成功启动（客户端也能使用） -1初始化 0正在启动 1启动成功 2启动失败
 let startStatus = -1;
+// 是否清空消息（对方收到消息会反馈，收到反馈就删除） 
+let clearText = false;
 
 module.exports = {
     AES_TOKEN,
@@ -22,5 +24,6 @@ module.exports = {
     SERVER_POOL,
     SOCKET_POOL,
     startStatus,
+    clearText,
 }
 
