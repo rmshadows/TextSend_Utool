@@ -4,6 +4,7 @@ const { Message } = require('./message');
 const profile = require("./profile");
 const crypto = require("./crypto");
 const Hashcode = require("./hashcode");
+const { exit } = require('process');
 
 /**
 参考：
@@ -99,7 +100,7 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
                                 profile.SOCKET_POOL[clientId] = [socket, clientMode];
                                 console.log("客户端模式：" + clientMode);
                                 // 打印当前状态 preload
-                                window.getConnectionStat();
+                                // window.getConnectionStat();
                                 // 告知客户端模式选择
                                 socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON());
                                 clientConfirmId = true;
@@ -168,9 +169,9 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
                             // 直接粘贴
                             // utools.hideMainWindowPasteText(data);
                             // 使用utools API CTRL + V
-                            utools.hideMainWindowTypeString(data[1])
+                            // utools.hideMainWindowTypeString(data[1])
                             // 收到消息 放入剪贴板 
-                            utools.copyText(data[1]);
+                            // utools.copyText(data[1]);
                             // 发送反馈(反馈写在notes)
                             serverFeedback();
                         }
@@ -252,6 +253,7 @@ function serverFeedback() {
                 profile.MSG_LEN,
                 profile.SERVER_ID,
                 profile.FB_MSG).getJSON();
+            // console.log(toSend);
             el.write(toSend);
         } catch (error) {
             console.log("server feedback: " + error);

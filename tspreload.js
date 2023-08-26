@@ -49,36 +49,14 @@ window.stopClient = function () {
   client.disconnectServer();
 }
 
-
+// 服务端发送
 window.serverSend = function (msgString) {
-  // 会发送给所有连接的客户端
-  for (let key in profile.SOCKET_POOL) {
-    try {
-      // 因为NODE端只能发送JSON所以不用考虑参数2
-      const el = profile.SOCKET_POOL[key][0];
-      let toSend = new Message(msgString, profile.MSG_LEN, profile.SERVER_ID, undefined).getJSON();
-      console.log("Server send message(" + key + "): " + msgString + " => " + toSend);
-      el.write(toSend);
-    } catch (error) {
-      console.log("serverSend: " + error);
-    }
-  }
+  server.ssend(msgString);
 }
 
-
+// 客户端发送
 window.clientSend = function (msgString) {
-  // 会发送给所有连接的服务器
-  for (let key in profile.SOCKET_POOL) {
-    try {
-      // 因为NODE端只能发送JSON所以不用考虑参数2
-      const el = profile.SOCKET_POOL[key][0];
-      let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
-      console.log("Client send message(" + key + "): " + msgString + " => " + toSend);
-      el.write(toSend);
-    } catch (error) {
-      console.log("clientSend: " + error);
-    }
-  }
+  client.csend(msgString);
 }
 
 

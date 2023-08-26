@@ -13,13 +13,13 @@ class Message {
         this.id = id;
         // 留言
         this.notes = notes;
-        if(stringText == ""){
+        if (stringText == "") {
             this.stringText == undefined;
         }
-        if(id == ""){
+        if (id == "") {
             this.id = undefined;
         }
-        if(notes == ""){
+        if (notes == "") {
             this.notes = undefined;
         }
         // 加密的数据
@@ -63,8 +63,8 @@ class Message {
         cj['id'] = this.id;
         cj['data'] = this.stringText == undefined ? "" : this.stringText;
         cj['notes'] = this.notes == undefined ? "" : this.notes;
-        console.log("Clear JSON: " + JSON.stringify(cj));
-        console.log("Generate JSON: " + this.json);
+        console.log("  ==>>  Clear JSON: " + JSON.stringify(cj));
+        console.log("  <<==  Generate JSON: " + this.json);
     }
 
     // 返回用于传输的JSON
