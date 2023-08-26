@@ -21,7 +21,10 @@ export const getDefaultIpAddr = (array) => {
 }
 
 
-// 显示错误信息
+/**
+ * Naive UI显示错误信息
+ * @param {String} error 
+ */
 export const errorHandler = (error) => {
     // 需要确保已经在 setup 中执行了 window.$message = message
     window.$message.error(error, {

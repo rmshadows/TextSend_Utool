@@ -32,4 +32,3 @@ module.exports = {
     generateQR,
 }
 
-// generateQR("192.168.1.1", "54300", "/home/ryan");

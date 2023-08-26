@@ -22,9 +22,12 @@ export const useMainbodyStore = defineStore('mainbody', {
         }
     },
     getters: {
-        // 如果getter带参数，getter 将不再被缓存，它们只是一个被你调用的函数
-        // 是否禁用模式切换按钮
+        /**
+         * 是否禁用模式切换按钮
+         * @returns boolean
+         */
         getDisableChangeModeBtn() {
+            // 如果getter带参数，getter 将不再被缓存，它们只是一个被你调用的函数
             if (this.serverMode) {
                 // 启动服务但未链接时
                 if (this.isServerStart && !this.isConnected) {
@@ -48,7 +51,11 @@ export const useMainbodyStore = defineStore('mainbody', {
         },
     },
     actions: {
-        // 服务端启动
+        /**
+         * 服务端启动（供外部调用）
+         * @param {String} port 监听的端口号
+         * @param {Number} maxConnections 最大支持连接数
+         */
         async serverStart(port, maxConnections) {
             // 启动服务
             try {
@@ -66,7 +73,9 @@ export const useMainbodyStore = defineStore('mainbody', {
                 }, 2000);
             }
         },
-        // 服务端停止
+        /**
+         * 服务端停止（供外部调用）
+         */
         async serverStop() {
             try {
                 await window.stopServer();
@@ -80,7 +89,11 @@ export const useMainbodyStore = defineStore('mainbody', {
                 console.log("mainbodyStore => action:serverStop(): " + error);
             }
         },
-        // 客户端模式启动
+        /**
+         * 客户端模式启动连接（供外部调用）
+         * @param {String} ip IPv4地址
+         * @param {String} port 端口号
+         */
         async clientStart(ip, port) {
             /**
              * 点击客户端启动按钮后，开始轮询
@@ -96,7 +109,9 @@ export const useMainbodyStore = defineStore('mainbody', {
                 console.log("mainbodyStore => action:clientStart(ip, port): " + error);
             }
         },
-        // 客户端模式停止、断开
+        /**
+         * 客户端模式停止、断开（供外部调用）
+         */
         async clientStop() {
             // 这里是主动断开连接，停止客户端
             try {
@@ -108,7 +123,12 @@ export const useMainbodyStore = defineStore('mainbody', {
                 console.log("mainbodyStore => action:clientStop(): " + error);
             }
         },
-        // 查询node模块Socket连接状态(默认半秒查询一次) 控制开关是否可以发送文字
+        /**
+         * 查询node模块Socket连接状态(默认半秒查询一次) 
+         * 控制切花按钮开关是否可以发送文字
+         * 此方法在连接成功后才会调用
+         * @param {*} gap 轮询间隔 毫秒 默认500毫秒
+         */
         getNodeSocketsConnectStat(gap = 500) {
             // 服务模式开始或者客户端连接没断(客户端在连接成功时才调用这个方法)才会开始轮询
             if (this.serverMode) { // 服务端模式时
@@ -160,7 +180,11 @@ export const useMainbodyStore = defineStore('mainbody', {
                 }
             }
         },
-        // 轮询服务启动是否成功(超时10秒) 
+        /**
+         * 轮询服务启动是否成功( 启动服务端时调用的)
+         * @param {*} gap 轮询间隔 毫秒 默认500毫秒
+         * @param {*} timeoutSecond 超时 秒 默认10秒
+         */
         async getIfServerStartSuccessful(gap = 500, timeoutSecond = 10) {
             // 是否超时
             let isTimeout = false;
@@ -196,8 +220,13 @@ export const useMainbodyStore = defineStore('mainbody', {
                 this.serverStop();
             }
             // 还原参数，避免下次调用失败
-            window.setStartStatus(0);
+            window.setStartStatus(-1);
         },
+        /**
+         * 轮询客户端是否连接成功(在点击连接后才调用)
+         * @param {Number} gap 轮询间隔 毫秒 默认500毫秒
+         * @param {Number} timeoutSecond 超时 秒 默认10秒
+         */
         async getIfClientStartSuccessful(gap = 500, timeoutSecond = 10) {
             // 是否超时
             let isClientTimeout = false;
@@ -236,47 +265,61 @@ export const useMainbodyStore = defineStore('mainbody', {
                 this.clientStop();
             }
             // 还原参数，避免下次调用失败
-            window.setStartStatus(0);
+            window.setStartStatus(-1);
         },
+        /**
+         * 启动服务端
+         */
         setServerStart() {
             this.setServerStat(true);
-            // 启动服务后会禁用切换按钮
-            // this.setDisableChangeModeBtn(true);
         },
-        // 服务端停止
+        /**
+         * 服务端停止
+         */
         setServerStop() {
             this.setServerStat(false);
-            // this.setDisableChangeModeBtn(false);
         },
-        // 客户端模式启动
-        setClientStart(value) {
+        /**
+         * 客户端模式启动
+         */
+        setClientStart() {
             // 尝试连接
-            this.clientSocketStat = false;
+            this.clientSocketStat = 0;
         },
-        // 客户端模式停止、断开
-        setClientStop(value) {
+        /**
+         * 客户端模式停止、断开
+         */
+        setClientStop() {
             // 这里是主动断开连接，停止客户端
-            this.clientSocketStat = true;
+            this.clientSocketStat = 3;
         },
-        // 修改模式状态
+        /**
+         * 修改模式状态
+         */
         changeServerMode() {
             if (this.serverMode) {
                 this.serverMode = false;
                 console.log("切换客户端模式");
             } else {
                 this.serverMode = true;
-                // 防客户端连接中切换出错
-                this.clientSocketStat = false;
+                // 防客户端连接中切换出错 设置0会在连续切换模式后锁死 
+                this.clientSocketStat = -1;
                 console.log("切换服务端模式");
             }
         },
-        // 设置连接状态
+        /**
+         * 设置连接状态
+         * @param {boolean} value 
+         */
         setConnectStat(value) {
             if (value != this.isConnected) {
                 this.isConnected = value;
                 value ? console.log("设置连接成功状态") : console.log("设置连接断开状态");
             }
         },
+        /**
+         * 修改连接状态
+         */
         changeConnectStat() {
             if (this.isConnected) {
                 this.isConnected = false;
@@ -284,6 +327,10 @@ export const useMainbodyStore = defineStore('mainbody', {
                 this.isConnected = true;
             }
         },
+        /**
+         * 设置服务端启动状态
+         * @param {boolean} value 
+         */
         setServerStat(value) {
             if (value) {
                 this.isServerStart = true;
@@ -293,6 +340,9 @@ export const useMainbodyStore = defineStore('mainbody', {
                 console.log("设置服务端停止状态");
             }
         },
+        /**
+         * 修改服务端启动状态
+         */
         changeServerStat() {
             if (this.isServerStart) {
                 this.isServerStart = false;
@@ -302,6 +352,10 @@ export const useMainbodyStore = defineStore('mainbody', {
                 console.log("服务端启动");
             }
         },
+        /**
+         * 禁用切换模式按钮
+         * @param {boolean} value 
+         */
         setDisableChangeModeBtn(value) {
             this.disableChangeModeBtn = value;
         }

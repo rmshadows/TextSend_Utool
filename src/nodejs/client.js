@@ -5,6 +5,11 @@ const net = require('net');
 const crypto = require("./crypto");
 const { Message } = require("./message");
 
+/**
+ * 客户端创建
+ * @param {*} ip 
+ * @param {*} port 
+ */
 function createTsClient(ip, port) {
     profile.startStatus = 0;
     const client = net.connect(port, ip);
@@ -97,7 +102,9 @@ function createTsClient(ip, port) {
     });
 }
 
-// 客户端反馈
+/**
+ * 客户端反馈
+ */
 function clientFeedback() {
     for (let key in profile.SOCKET_POOL) {
         try {
@@ -115,7 +122,9 @@ function clientFeedback() {
 }
 
 
-// 断开所有连接
+/**
+ * 断开所有连接
+ */
 function disconnectServer() {
     let s = true;
     for (let key in profile.SOCKET_POOL) {

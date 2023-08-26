@@ -5,7 +5,7 @@ const L = require('list');
 
 /**
  * 获取IP
- * @param {*} type 
+ * @param {Number} type 类型0:全部 1:ip4 2:ip6
  * @returns 
  */
 function getIpAddr(type = 0) {
@@ -40,7 +40,12 @@ function getIpAddr(type = 0) {
     return L.toArray(iaddr);
 }
 
-//生成从minNum到maxNum的随机数
+/**
+ * 生成从minNum到maxNum的随机数
+ * @param {Number} minNum 
+ * @param {Number} maxNum 
+ * @returns 
+ */
 function randomNum(minNum, maxNum) {
     switch (arguments.length) {
         case 1:
@@ -99,7 +104,10 @@ function realSleep(ms) {
     return Atomics.wait(int32, 0, 0, Number(ms))
 }
 
-
+/**
+ * 时间戳
+ * @returns 
+ */
 function getTimestamp() {
     return Number(new Date().getTime());
 }

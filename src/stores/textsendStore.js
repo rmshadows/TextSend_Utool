@@ -12,10 +12,6 @@ export const useTextsendStore = defineStore('textsend', {
             {
                 "label": "::1",
                 "value": "::1"
-            },
-            {
-                "label": "192.168.30.126",
-                "value": "192.168.30.126"
             }],
             // 选取的IP
             ipAddr: "127.0.0.1",
@@ -31,7 +27,10 @@ export const useTextsendStore = defineStore('textsend', {
         }
     },
     getters: {
-        // 获取文本输入框默认文字
+        /**
+         * 获取文本输入框默认文字
+         * @returns String
+         */
         getInputTextPlaceholder() {
             // 访问mainbodyStore
             const mbStore = useMainbodyStore();
@@ -46,7 +45,10 @@ export const useTextsendStore = defineStore('textsend', {
                 }
             }
         },
-        // 获取启动按钮所需的文字
+        /**
+         * 获取启动按钮所需的文字
+         * @returns String
+         */
         getLaunchBtnText() {
             const mbStore = useMainbodyStore();
             // 如果是服务端
@@ -66,7 +68,10 @@ export const useTextsendStore = defineStore('textsend', {
                 }
             }
         },
-        // 更改模式按钮文字
+        /**
+         * 更改模式按钮文字
+         * @returns String
+         */
         getChangeModeBtnText() {
             const mbStore = useMainbodyStore();
             if (mbStore.isConnected) {
@@ -77,22 +82,41 @@ export const useTextsendStore = defineStore('textsend', {
         },
     },
     actions: {
+        /**
+         * IP列表JSON
+         * @param {JSON} value 
+         */
         setIpAddrListValue(value) {
             // console.log("setIpAddrListValue: 设置IP下拉框列表 => " + JSON.stringify(value));
             this.ipAddrList = value;
         },
+        /**
+         * 从IP列表中猜的默认IP（192开头）
+         * @param {String} value 
+         */
         setIpAddrValue(value) {
             // console.log("setIpAddrValue: 设置IP地址 => " + value);
             this.ipAddr = value;
         },
+        /**
+         * 设置端口号
+         * @param {String | Number} value 
+         */
         setPortNumberValue(value) {
             console.log("setPortNumberValue: 设置端口号 => " + value);
             this.portNumber = value;
         },
+        /**
+         * 修改文本框内容(内部或者小段文字时调用)
+         * @param {String} value 
+         */
         setInputValueSync(value) {
             console.log("setInputValue: 设置文本框内容 => " + value);
             this.inputText = value;
         },
+        /**
+         * 文本框是否显示正在输入
+         */
         changeIsLoadingValue() {
             if (this.isLoading) {
                 this.isLoading = false;
@@ -101,12 +125,20 @@ export const useTextsendStore = defineStore('textsend', {
             }
             console.log("changeIsLoadingValue: => " + this.isLoading);
         },
+        /**
+         * 是否显示文本框加载中
+         * @param {boolean} value 
+         */
         setIsLoadingValue(value) {
             if (value != this.isLoading) {
                 this.isLoading = value;
                 console.log("set isLoading value to " + this.isLoading);
             }
         },
+        /**
+         * 文本框输入大段文字（虽然好像也没啥用）
+         * @param {String} value 
+         */
         async setInputTextValue(value) {
             new Promise((resolve, reject) => {
                 this.setIsLoadingValue(true);

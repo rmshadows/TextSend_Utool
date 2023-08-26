@@ -11,8 +11,10 @@ http://zhenhua-lee.github.io/node/socket.html
 https://github.com/qufei1993/Nodejs-Roadmap/blob/master/docs/nodejs/net.md
  */
 /**
- * 启动socket服务 只允许一个
- * @param {*} overwrite 是否覆盖原有
+ * 启动socket监听服务 只允许一个
+ * @param {String} port 端口号 
+ * @param {Number} maxConnections 最大连接数量
+ * @param {boolean} overwrite 是否覆盖原有
  */
 function createTsServer(port, maxConnections = 1, overwrite = false) {
     // IPC通信，未使用
@@ -201,7 +203,9 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
     profile.SERVER_POOL.push(server);
 }
 
-// 服务端反馈
+/**
+ * 服务端反馈
+ */
 function serverFeedback() {
     for (let key in profile.SOCKET_POOL) {
         try {
