@@ -4,6 +4,7 @@ const profile = require("./profile");
 const net = require('net');
 const crypto = require("./crypto");
 const { Message } = require("./message");
+const { resolve } = require("path");
 
 /**
  * 客户端创建
@@ -105,6 +106,7 @@ function createTsClient(ip, port) {
                 data = json_parts;
                 json_parts = "";
                 console.log("解密前：" + data);
+                data = crypto.decryptJSON(data);
                 // 如果ID来源服务器
                 if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
                     console.log("解密后：" + data);
@@ -115,9 +117,9 @@ function createTsClient(ip, port) {
                         // 直接粘贴
                         // utools.hideMainWindowPasteText(data);
                         // 使用utools API CTRL + V
-                        utools.hideMainWindowTypeString(data[1])
+                        // utools.hideMainWindowTypeString(data[1])
                         // 收到消息 放入剪贴板 
-                        utools.copyText(data[1]);
+                        // utools.copyText(data[1]);
                         // 反馈
                         clientFeedback();
                     }
@@ -195,7 +197,13 @@ function csend(msgString) {
             const el = profile.SOCKET_POOL[key][0];
             let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
             console.log("Client send message(" + key + "): " + msgString + " => " + toSend);
-            el.write(toSend);
+            // https://stackoverflow.com/questions/23606137/node-js-tcp-socket-write-trouble
+            // https://stackoverflow.com/questions/48344827/nodejs-setnodelay-not-working-is-there-an-alternative-to-flush-socket-buffer
+            // https://stackoverflow.com/questions/8957872/node-js-how-to-flush-socket
+            // Enable the use of Nagle's algorithm.
+            el.setNoDelay(true);
+            // TODO: flush
+            el.write(toSend + '\n');
         } catch (error) {
             console.log("clientSend: " + error);
         }

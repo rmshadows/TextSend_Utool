@@ -105,6 +105,7 @@ function createTsClient(ip, port) {
                 data = json_parts;
                 json_parts = "";
                 console.log("解密前：" + data);
+                data = crypto.decryptJSON(data);
                 // 如果ID来源服务器
                 if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
                     console.log("解密后：" + data);
