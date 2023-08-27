@@ -185,7 +185,7 @@ function disconnectServer() {
 }
 
 /**
- * 发送
+ * 发送 禁止连续调用(中间要有间隔，否则发送 A B 会收到 AB)
  * @param {String} msgString 
  */
 function csend(msgString) {

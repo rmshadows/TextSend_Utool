@@ -11,7 +11,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "0.0.4",
+            version: "0.0.5",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来

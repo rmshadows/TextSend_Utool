@@ -28,51 +28,77 @@ window.getIpAddr = function () {
 }
 
 
-// 启动服务端
+/**
+ * 启动服务端
+ * @param {String} port 端口号
+ * @param {Number} maxConnections 最大连接数
+ */
 window.startServer = function (port, maxConnections = 1) {
   server.createTsServer(port, maxConnections);
 }
 
-// 停止服务
+/**
+ * 停止服务
+ */
 window.stopServer = function () {
   server.closeAllServers();
 }
 
 
-// 客户端连接
+/**
+ * 客户端连接
+ * @param {String} ip 
+ * @param {String} port 
+ */
 window.startClient = function (ip, port) {
   client.createTsClient(ip, port);
 }
 
-// 客户端断开
+/**
+ * 客户端断开
+ */
 window.stopClient = function () {
   client.disconnectServer();
 }
 
-// 服务端发送
+/**
+ * 服务端发送 禁止连续调用(中间要有间隔，否则发送 A B 会收到 AB)
+ * @param {String} msgString 
+ */
 window.serverSend = function (msgString) {
   server.ssend(msgString);
 }
 
-// 客户端发送
+/**
+ * 客户端发送 禁止连续调用(中间要有间隔，否则发送 A B 会收到 AB)
+ * @param {String} msgString 
+ */
 window.clientSend = function (msgString) {
   client.csend(msgString);
 }
 
 
-// 生成二维码图片地址
+/**
+ * 生成二维码图片地址
+ * @param {String} ip 
+ * @param {String} port 
+ * @returns 
+ */
 window.getQrImgPath = function (ip, port) {
   return qrcode.generateQR(ip, port, utools.getPath("temp"));
 }
 
-// 获取临时目录
+/**
+ * 获取临时目录
+ * @returns 
+ */
 window.getTempDir = function () {
   return utools.getPath("temp");
 }
 
 /**
  * 返回服务器状态 服务器数量、连接数
- * @returns 
+ * @returns 服务器数量、连接数
  */
 window.getConnectionStat = function () {
   console.log("Server: " + profile.SERVER_POOL.length + "  Sockets(server+client): "
@@ -85,19 +111,28 @@ window.getConnectionStat = function () {
   return [profile.SERVER_POOL.length, Object.keys(profile.SOCKET_POOL).length]
 }
 
-// 调用检查是否要清空文字
+/**
+ * 调用检查是否要清空文字
+ * @returns 
+ */
 window.getMsgFeedbackStat = function () {
   return profile.clearText;
 }
 
-// 设置清空文字的状态
+/**
+ * 设置清空文字的状态
+ * @param {boolean} value 
+ */
 window.setClearStat = function (value) {
   if (profile.clearText != value) {
     profile.clearText = value;
   }
 }
 
-// 返回服务启动是否报错(True为成功)
+/**
+ * 返回服务启动是否报错(True为成功)
+ * @returns 
+ */
 window.startSuccessful = function () {
   if (profile.startStatus == 1) {
     console.log("Start successful.");
@@ -109,7 +144,10 @@ window.startSuccessful = function () {
   return profile.startStatus;
 }
 
-// 设置profile.startStatus参数
+/**
+ * 设置profile.startStatus参数
+ * @param {Number} value 
+ */
 window.setStartStatus = function (value) {
   profile.startStatus = value;
 }
