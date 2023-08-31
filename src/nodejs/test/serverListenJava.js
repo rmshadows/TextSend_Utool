@@ -74,28 +74,6 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
         console.log("服务端分配ID：" + sendIdData);
         socket.write(sendIdData + profile.MESSAGE_END);
 
-        // setTimeout(() => {
-        //     socket.write(sx);
-        // }, 1000);
-
-        setTimeout(() => {
-            socket.write(sendIdData + profile.MESSAGE_END);
-        }, 2000);
-
-        // setTimeout(() => {
-        //     socket.write(sendIdData + profile.MESSAGE_END);
-        // }, 3000);
-
-        // setTimeout(() => {
-        //     socket.write(sendIdData + profile.MESSAGE_END);
-        // }, 4000);
-
-        // setTimeout(() => {
-        //     socket.write("55" + profile.MESSAGE_END);
-        // }, 5000);
-
-
-
         // 是否成功设置客户端模式
         let setClientMode = true;
         // 客户端确认ID 及返回支持的模式 确认格式：id(id:{random}):data(空):notes(SUPPORT-{$客户端模式☯☯{random})
@@ -116,6 +94,7 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
                 if (data != undefined && Number(data[0]) == clientId) {
                     try {
                         let tsp = data[2].split("-"); // 分隔成 CONFIRM:{$客户端支持的模式}
+                        console.log(data);
                         if (tsp[0] == "SUPPORT") {
                             // 客户端模式：0: java class 1:JSON
                             let clientMode = selectClientMode(tsp[1]);
