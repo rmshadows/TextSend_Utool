@@ -70,7 +70,7 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
         // [ '-200', '', '3566633025' ]
         let sendIdData = new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, clientId).getJSON();
         console.log("服务端分配ID：" + sendIdData);
-        socket.write(sendIdData);
+        socket.write(sendIdData + profile.MESSAGE_END);
         // 是否成功设置客户端模式
         let setClientMode = true;
         // 客户端确认ID 及返回支持的模式 确认格式：id(id:{random}):data(空):notes(SUPPORT-{$客户端模式☯☯{random})
@@ -101,7 +101,7 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
                                 // 打印当前状态 preload
                                 window.getConnectionStat();
                                 // 告知客户端模式选择
-                                socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON());
+                                socket.write(new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, "CONFIRM-" + clientMode).getJSON() + profile.MESSAGE_END);
                                 clientConfirmId = true;
                                 // 如果成功设置模式
                                 setClientMode = false;
@@ -252,7 +252,7 @@ function serverFeedback() {
                 profile.MSG_LEN,
                 profile.SERVER_ID,
                 profile.FB_MSG).getJSON();
-            el.write(toSend);
+            el.write(toSend + profile.MESSAGE_END);
         } catch (error) {
             console.log("server feedback: " + error);
         }
@@ -271,7 +271,7 @@ function ssend(msgString) {
             const el = profile.SOCKET_POOL[key][0];
             let toSend = new Message(msgString, profile.MSG_LEN, profile.SERVER_ID, undefined).getJSON();
             console.log("Server send message(" + key + "): " + msgString + " => " + toSend);
-            el.write(toSend);
+            el.write(toSend + profile.MESSAGE_END);
         } catch (error) {
             console.log("serverSend: " + error);
         }

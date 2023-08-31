@@ -49,7 +49,7 @@ function createTsClient(ip, port) {
                 ID = data[2];
                 // 发送支持的模式，由服务端决定
                 console.log("Client get ID: " + ID);
-                client.write(new Message(undefined, profile.MSG_LEN, ID, "SUPPORT-" + SUPPORT_MODE).getJSON());
+                client.write(new Message(undefined, profile.MSG_LEN, ID, "SUPPORT-" + SUPPORT_MODE).getJSON() + profile.MESSAGE_END);
                 getClientId = false;
             }
         } else if (getMode) {
@@ -67,7 +67,7 @@ function createTsClient(ip, port) {
                 profile.SOCKET_POOL[ID] = [client, clientModeset];
                 profile.startStatus = 1;
                 getMode = false;
-                // client.write(new Message("test", profile.MSG_LEN, ID, undefined).getJSON());
+                // client.write(new Message("test", profile.MSG_LEN, ID, undefined).getJSON() + profile.MESSAGE_END);
             }
         } else {
             // 正常读取JSON (长文本JSON会分多次传输，需要读取到罪末尾的notes方为结束，可以解密)
@@ -155,7 +155,7 @@ function clientFeedback() {
                 profile.MSG_LEN,
                 key,
                 profile.FB_MSG).getJSON();
-            el.write(toSend);
+            el.write(toSend + profile.MESSAGE_END);
         } catch (error) {
             console.log("client feedback: " + error);
         }
@@ -196,7 +196,7 @@ function csend(msgString) {
             const el = profile.SOCKET_POOL[key][0];
             let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
             console.log("Client send message(" + key + "): " + msgString + " => " + toSend);
-            el.write(toSend);
+            el.write(toSend + profile.MESSAGE_END);
         } catch (error) {
             console.log("clientSend: " + error);
         }

@@ -145,9 +145,7 @@ function test() {
   let cbcs = createCBC("123456", "4321", 32);
   console.log("CFB加密前：" + msg);
   let xmsg = encryptCFB(cfbs, msg);
-  console.log("CFB加密1：" + xmsg);
-  xmsg = encryptCFB(cfbs, "666");
-  console.log("CFB加密2：" + xmsg);
+  console.log("CFB加密：" + xmsg);
   console.log("CFB解密：" + decryptCFB(cfbs, xmsg));
   xmsg = encryptCFB(undefined, msg, "12345", "54321", 32);
   console.log("CFB临时加密(PWD: 12345;IV:54321)：" + xmsg);

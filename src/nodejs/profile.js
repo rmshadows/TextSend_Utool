@@ -15,6 +15,8 @@ let SOCKET_POOL = {};
 let startStatus = -1;
 // 是否清空消息（对方收到消息会反馈，收到反馈就删除） 
 let clearText = false;
+// 发送消息的结尾
+const MESSAGE_END = "";
 
 module.exports = {
     AES_TOKEN,
@@ -25,5 +27,6 @@ module.exports = {
     SOCKET_POOL,
     startStatus,
     clearText,
+    MESSAGE_END,
 }
 

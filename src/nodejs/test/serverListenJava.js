@@ -5,6 +5,7 @@ const profile = require("./profile");
 const crypto = require("./crypto");
 const Hashcode = require("./hashcode");
 const { exit } = require('process');
+const sx = require("./str");
 
 /**
 参考：
@@ -72,6 +73,29 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
         let sendIdData = new Message(undefined, profile.MSG_LEN, profile.SERVER_ID, clientId).getJSON();
         console.log("服务端分配ID：" + sendIdData);
         socket.write(sendIdData + profile.MESSAGE_END);
+
+        // setTimeout(() => {
+        //     socket.write(sx);
+        // }, 1000);
+
+        setTimeout(() => {
+            socket.write(sendIdData + profile.MESSAGE_END);
+        }, 2000);
+
+        // setTimeout(() => {
+        //     socket.write(sendIdData + profile.MESSAGE_END);
+        // }, 3000);
+
+        // setTimeout(() => {
+        //     socket.write(sendIdData + profile.MESSAGE_END);
+        // }, 4000);
+
+        // setTimeout(() => {
+        //     socket.write("55" + profile.MESSAGE_END);
+        // }, 5000);
+
+
+
         // 是否成功设置客户端模式
         let setClientMode = true;
         // 客户端确认ID 及返回支持的模式 确认格式：id(id:{random}):data(空):notes(SUPPORT-{$客户端模式☯☯{random})
@@ -192,7 +216,7 @@ function createTsServer(port, maxConnections = 1, overwrite = false) {
 
         socket.on('timeout', () => {
             console.log(remoteIP + ' timeout');
-            socket.end();
+            // socket.end();
             socket.destroy();
         });
 
@@ -353,4 +377,9 @@ module.exports = {
     closeAllSockets,
     ssend,
 }
+
+// Main
+createTsServer("54300");
+// console.log(sx);
+
 
