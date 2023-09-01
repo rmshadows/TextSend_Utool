@@ -346,6 +346,7 @@ function selectClientMode(supportMode) {
     } else {
         // 因为Node端仅支持JSON传输，所以直接返回1
         return 1;
+        // return 2;
     }
 }
 

@@ -52,5 +52,3 @@ module.exports = {
     decrypt,
     decryptJSON,
 }
-
-console.log(encrypt("666"));
