@@ -1,6 +1,6 @@
 # TextSend_Utools_Plugin
 
-本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：0.0.5
+本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：0.0.6
 
 ## 支持的平台
 
@@ -79,6 +79,9 @@ npm run dev
 这个请直接看官网[文档](https://www.u.tools/docs/developer/welcome.html#plugin-json)了
 
 # 更新日志
+
+- 2023.09.02——0.0.6
+  - 没什么大的更新
 
 - 2023.08.28——0.0.5
   - 解决了长文本传输的问题(但连续快速发送会出错，比如连续分别发送“A”、“B”，对方只会收到“AB”)

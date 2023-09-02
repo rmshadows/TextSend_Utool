@@ -2,7 +2,7 @@
 const maes = require("./maes/maes.cjs");
 const profile = require("./profile");
 
-const IV = "";
+const IV = "ES";
 const KEY = profile.AES_TOKEN;
 
 // 导出加密器
