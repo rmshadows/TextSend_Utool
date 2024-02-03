@@ -20,7 +20,7 @@
             <n-select :value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
               @update-show="updateIpAddrList" />
           </template>
-          请选择本机IP(暂不支持IPv6)
+          请选择本机IP
         </n-tooltip>
       </span>
       <!-- 选择端口 -->
@@ -187,14 +187,29 @@ const lanuchBtnEvent = (oneClient = true) => {
       let addr = tsStore.inputText;
       let i = undefined;
       let p = undefined;
-      if (addr.indexOf(":") == -1) {
-        // 没有端口号
-        p = 54300;
-        i = tsStore.inputText;
+      // 先判是否是ipv6
+      if (js.UisIpv6(addr)) {
+        // 如果是ipv6
+        if (addr.indexOf("]") == -1) {
+          // 如果没有括号，表示不带端口
+          p = 54300;
+          i = tsStore.inputText;
+        } else {
+          addr = addr.split("]:");
+          // 去除前面中括号
+          i = addr[0].replace("[", "");
+          p = addr[1];
+        }  
       } else {
-        addr = addr.split(":");
-        i = addr[0];
-        i = addr[1];
+        if (addr.indexOf(":") == -1) {
+          // 没有端口号
+          p = 54300;
+          i = tsStore.inputText;
+        } else {
+          addr = addr.split(":");
+          i = addr[0];
+          p = addr[1];
+        }
       }
       mbStore.clientStart(i, p);
     }

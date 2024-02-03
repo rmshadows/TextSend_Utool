@@ -4,6 +4,7 @@ const server = require("./src/nodejs/server");
 const client = require("./src/nodejs/client");
 const profile = require("./src/nodejs/profile");
 const { Message } = require("./src/nodejs/message");
+const net = require('net');
 
 // 进入插件调用的 刷新插件不会调用
 // utools.onPluginEnter(({ code, type, payload, option }) => {
@@ -85,7 +86,24 @@ window.clientSend = function (msgString) {
  * @returns 
  */
 window.getQrImgPath = function (ip, port) {
+  // ipv6加中括号
+  if (isIPv6(ip)) {
+    ip = '[' + ip + ']'
+    return qrcode.generateQR(ip, port, utools.getPath("temp"));
+  }
   return qrcode.generateQR(ip, port, utools.getPath("temp"));
+}
+
+/**
+ * 判断是否ipv6
+ * @param {string} ip 
+ * @returns 
+ */
+window.isIPv6 = function (ip) {
+  if (ip.indexOf("]:") != -1) {
+    return true;
+  }
+  return net.isIPv6(ip);
 }
 
 /**

@@ -51,6 +51,16 @@ export const UgetIpAddrList = () => {
 
 
 /**
+ * 返回是否ipv6
+ * @param {string} ip 
+ * @returns 
+ */
+export const UisIpv6 = (ip) => {
+    return window.isIPv6(ip);
+}
+
+
+/**
  * 生成二维码图片 tsc => preload =>  node
  * @param {*} ip 
  * @param {*} port 
