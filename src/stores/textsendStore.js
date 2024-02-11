@@ -41,7 +41,7 @@ export const useTextsendStore = defineStore('textsend', {
                 if (mbStore.isConnected) {
                     return "请输入要发送的文字";
                 } else {
-                    return "请输入服务端[IP地址]:[端口号]，如：192.168.1.2:54301 或者 192.168.1.2 (不加端口号默认54300) ";
+                    return "请输入服务端[IP地址]:[端口号]，如：192.168.1.2:54301、[::1]:5000 或者 192.168.1.2 (不加端口号默认54300) ";
                 }
             }
         },

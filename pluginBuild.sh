@@ -2,7 +2,7 @@
 
 set -uex
 # 生成导出文件夹
-prelease="RELEASE"
+prelease="DEBUG_RELEASE"
 
 if ! [ -d "$prelease" ];then
   mkdir "$prelease"
@@ -25,4 +25,5 @@ cp "logo.pn"g "$prelease"
 cp "LICENSE" "$prelease"
 cp "index.html" "$prelease"
 rm -r "$prelease"/src/nodejs/test
+cp -r "$prelease" RELEASE
 
