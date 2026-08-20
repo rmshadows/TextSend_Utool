@@ -1,43 +1,72 @@
 "use strict";
 
 const os = require("os");
-const L = require('list');
+
+function hostOf(info) {
+    return String(info.address || "").split("%")[0];
+}
+
+function isDropped(info) {
+    const raw = hostOf(info);
+    if (!raw || raw === "0.0.0.0" || raw === "::") {
+        return true;
+    }
+    const fam = info.family;
+    if (fam === "IPv4" || fam === 4) {
+        const a = parseInt(raw.split(".")[0], 10);
+        if (a >= 224) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** 回环 / 链路本地：列表末尾，不当默认 */
+function isJunk(info) {
+    const raw = hostOf(info);
+    if (info.internal) {
+        return true;
+    }
+    if (raw === "127.0.0.1" || raw === "::1") {
+        return true;
+    }
+    return raw.toLowerCase().startsWith("fe80") || raw.startsWith("169.254");
+}
+
+function familyOk(info, type) {
+    const fam = info.family;
+    const v4 = fam === "IPv4" || fam === 4;
+    const v6 = fam === "IPv6" || fam === 6;
+    if (type === 1) {
+        return v4;
+    }
+    if (type === 2) {
+        return v6;
+    }
+    return true;
+}
 
 /**
- * 获取IP
+ * 获取IP。局域网在前，127 / fe80 / 169.254 在后。
  * @param {Number} type 类型0:全部 1:ip4 2:ip6
- * @returns 
  */
 function getIpAddr(type = 0) {
-    // 获取本机网络信息
-    let iaddr = L.empty();
+    const lan = [];
+    const junk = [];
     const nfs = os.networkInterfaces();
-    // console.log(nfs);
-    // 查找 IPv4 地址
     for (const networkname in nfs) {
-        // 网络名称
-        // console.log(networkname);
-        for (const v4v6 of nfs[networkname]) {
-            // 打印IPv4 IPv6网络信息
-            // console.log(v4v6);
-            if (type == 1) {
-                if (v4v6.family === 'IPv4') {
-                    iaddr = L.append(v4v6.address, iaddr);
-                    break
-                }
+        for (const info of nfs[networkname]) {
+            if (!familyOk(info, type) || isDropped(info)) {
+                continue;
             }
-            else if (type == 2) {
-                if (v4v6.family === 'IPv6') {
-                    iaddr = L.append(v4v6.address, iaddr);
-                    break
-                }
-            } else {
-                iaddr = L.append(v4v6.address, iaddr);
+            const host = hostOf(info);
+            const bucket = isJunk(info) ? junk : lan;
+            if (bucket.indexOf(host) === -1) {
+                bucket.push(host);
             }
         }
     }
-    // prlst(L.toArray(iaddr));
-    return L.toArray(iaddr);
+    return lan.concat(junk);
 }
 
 /**

@@ -11,7 +11,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "0.0.8",
+            version: "5.0.7",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来
@@ -19,6 +19,9 @@ export const useMainbodyStore = defineStore('mainbody', {
             isServerStart: false, // 服务端是否已启动(仅服务端) 只能从Action更改
             disableChangeModeBtn: false, // 是否禁用切换按钮
             clientSocketStat: -1, // 客户端状态 -1:初始化 0:正在连接 1:连接成功 2:失败 3:连接成功后又再断开
+            clientSessionId: 0, // 每次连接/断开递增，用来作废旧轮询
+            connectedCount: 0, // 已握手的客户端数（服务端）
+            maxConnections: 1,
         }
     },
     getters: {
@@ -59,6 +62,8 @@ export const useMainbodyStore = defineStore('mainbody', {
         async serverStart(port, maxConnections) {
             // 启动服务
             try {
+                this.maxConnections = maxConnections;
+                this.connectedCount = 0;
                 await window.startServer(port, maxConnections);
                 this.setServerStart();
                 // 首先轮询服务是否成功启动 随后（如果成功启动）自动进行连接轮询
@@ -91,22 +96,24 @@ export const useMainbodyStore = defineStore('mainbody', {
         },
         /**
          * 客户端模式启动连接（供外部调用）
-         * @param {String} ip IPv4地址
-         * @param {String} port 端口号
+         * @param {String} raw ts:// 或 host:port/k...
          */
-        async clientStart(ip, port) {
+        async clientStart(raw) {
             /**
              * 点击客户端启动按钮后，开始轮询
              */
             try {
+                this.clientSessionId++;
+                const sessionId = this.clientSessionId;
                 // 尝试连接
                 this.clientSocketStat = 0;
-                await window.startClient(ip, port);
-                this.getIfClientStartSuccessful(500, 10);
+                this.setConnectStat(false);
+                await window.startClient(raw);
+                this.getIfClientStartSuccessful(500, 10, sessionId);
                 this.setClientStart();
             } catch (error) {
                 this.setClientStop();
-                console.log("mainbodyStore => action:clientStart(ip, port): " + error);
+                console.log("mainbodyStore => action:clientStart: " + error);
             }
         },
         /**
@@ -116,6 +123,7 @@ export const useMainbodyStore = defineStore('mainbody', {
             // 这里是主动断开连接，停止客户端
             try {
                 console.log("mvStore:Client断开中...");
+                this.clientSessionId++;
                 this.clientSocketStat = 3;
                 await window.stopClient();
                 this.setClientStop();
@@ -129,20 +137,20 @@ export const useMainbodyStore = defineStore('mainbody', {
          * 此方法在连接成功后才会调用
          * @param {*} gap 轮询间隔 毫秒 默认500毫秒
          */
-        getNodeSocketsConnectStat(gap = 500) {
+        getNodeSocketsConnectStat(gap = 500, sessionId = this.clientSessionId) {
             // 服务模式开始或者客户端连接没断(客户端在连接成功时才调用这个方法)才会开始轮询
             if (this.serverMode) { // 服务端模式时
                 // 如果服务启动
                 if (this.isServerStart) {
-                    // 如果连接不为0
-                    if (window.getConnectionStat()[1] != 0) {
+                    const n = Number(window.getConnectionStat()[1]) || 0;
+                    if (this.connectedCount !== n) {
+                        this.connectedCount = n;
+                    }
+                    if (n != 0) {
                         this.setConnectStat(true);
-                        // Socket在的情况下，如果收到反馈，清空文字
                         if (window.getMsgFeedbackStat()) {
                             const tsStore = useTextsendStore();
                             tsStore.setInputValueSync("");
-                            // console.log("清空文字");
-                            // 复原
                             window.setClearStat(false);
                         }
                     } else {
@@ -152,31 +160,32 @@ export const useMainbodyStore = defineStore('mainbody', {
                         this.getNodeSocketsConnectStat(gap);
                     }, gap);
                 } else {
+                    this.connectedCount = 0;
                     this.setConnectStat(false);
                 }
             } else { // 客户端模式时
-                // 连接成功的还在
-                if (this.clientSocketStat = 1) {
-                    // 如果连接不为0 
-                    if (window.getConnectionStat()[1] != 0) {
-                        this.setConnectStat(true);
-                        // Socket在的情况下，如果收到反馈，清空文字
-                        if (window.getMsgFeedbackStat()) {
-                            const tsStore = useTextsendStore();
-                            tsStore.setInputValueSync("");
-                            // console.log("清空文字");
-                            // 复原
-                            window.setClearStat(false);
-                        }
-                        setTimeout(() => {
-                            this.getNodeSocketsConnectStat(gap);
-                        }, gap);
-                    } else {
-                        // 如果断链
+                // 主动断开后 session 已换代，旧轮询必须立刻停，不能再把按钮打回「断开」
+                if (sessionId !== this.clientSessionId || this.clientSocketStat != 1) {
+                    this.setConnectStat(false);
+                    return;
+                }
+                if (window.getConnectionStat()[1] != 0) {
+                    if (sessionId !== this.clientSessionId || this.clientSocketStat != 1) {
                         this.setConnectStat(false);
-                        // 表示服务器主动断开
-                        this.clientSocketStat = 3;
+                        return;
                     }
+                    this.setConnectStat(true);
+                    if (window.getMsgFeedbackStat()) {
+                        const tsStore = useTextsendStore();
+                        tsStore.setInputValueSync("");
+                        window.setClearStat(false);
+                    }
+                    setTimeout(() => {
+                        this.getNodeSocketsConnectStat(gap, sessionId);
+                    }, gap);
+                } else {
+                    this.setConnectStat(false);
+                    this.clientSocketStat = 3;
                 }
             }
         },
@@ -227,7 +236,7 @@ export const useMainbodyStore = defineStore('mainbody', {
          * @param {Number} gap 轮询间隔 毫秒 默认500毫秒
          * @param {Number} timeoutSecond 超时 秒 默认10秒
          */
-        async getIfClientStartSuccessful(gap = 500, timeoutSecond = 10) {
+        async getIfClientStartSuccessful(gap = 500, timeoutSecond = 10, sessionId = this.clientSessionId) {
             // 是否超时
             let isClientTimeout = false;
             let success = false;
@@ -235,14 +244,17 @@ export const useMainbodyStore = defineStore('mainbody', {
                 isClientTimeout = true;
             }, timeoutSecond * 1000);
             // 当点下连接客户端时即开始轮询 直至10秒内发现启动失败 
-            while (!isClientTimeout && !this.serverMode) {
+            while (!isClientTimeout && !this.serverMode && sessionId === this.clientSessionId) {
                 // 还没超时以及客户端模式状态就会进入循环 
                 let stat = window.startSuccessful();
                 if (stat == 1) {
                     // 如果连接成功 开始监听连接
                     this.clientSocketStat = 1;
+                    // 连接串和发文字共用输入框，连上后清掉，避免当成要发的字
+                    const tsStore = useTextsendStore();
+                    tsStore.setInputValueSync("");
                     // 开始轮询连接状态
-                    this.getNodeSocketsConnectStat(gap);
+                    this.getNodeSocketsConnectStat(gap, sessionId);
                     success = true;
                     isClientTimeout = true;
                 } else if (stat == 2) {
@@ -260,12 +272,13 @@ export const useMainbodyStore = defineStore('mainbody', {
                     setTimeout(resolve, gap);
                 });
             }
-            // 没切换模式了就结束
-            if (!this.serverMode && !success) {
+            // 用户已点断开 / 换了一次连接：不要再 stop 一次把新会话干掉
+            if (!this.serverMode && !success && sessionId === this.clientSessionId) {
                 this.clientStop();
             }
-            // 还原参数，避免下次调用失败
-            window.setStartStatus(-1);
+            if (sessionId === this.clientSessionId) {
+                window.setStartStatus(-1);
+            }
         },
         /**
          * 启动服务端
@@ -278,6 +291,7 @@ export const useMainbodyStore = defineStore('mainbody', {
          */
         setServerStop() {
             this.setServerStat(false);
+            this.connectedCount = 0;
         },
         /**
          * 客户端模式启动
@@ -292,6 +306,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         setClientStop() {
             // 这里是主动断开连接，停止客户端
             this.clientSocketStat = 3;
+            this.setConnectStat(false);
         },
         /**
          * 修改模式状态

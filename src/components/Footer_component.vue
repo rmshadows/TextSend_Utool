@@ -46,10 +46,11 @@ footer_year.value = getFooterYear();
 <style scoped lang="less">
 .footer-component {
   width: 100%;
-  height: 70px;
-  font-size: 20px;
+  height: var(--ts-footer);
+  font-size: 12px;
   display: flex;
   justify-content: center;
+  align-items: center;
   user-select: none;
 }
 </style>

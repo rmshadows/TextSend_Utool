@@ -1,0 +1,27 @@
+"use strict";
+
+module.exports = {
+    MAGIC: Buffer.from("TS", "ascii"),
+    VERSION: 0x01,
+    TYPE_HELLO: 0x01,
+    TYPE_KEY_EXCHANGE: 0x02,
+    TYPE_AUTH_OK: 0x03,
+    TYPE_TEXT: 0x10,
+    TYPE_ACK: 0x11,
+    TYPE_ERROR: 0x7F,
+    HEADER_LEN: 8,
+    MAX_FRAME: 4 * 1024 * 1024,
+    GCM_NONCE_LEN: 12,
+    GCM_TAG_LEN: 16,
+    PSK_LEN: 32,
+    NONCE_LEN: 16,
+    PIN_LEN: 8,
+    DEFAULT_PORT: 54300,
+    HANDSHAKE_TIMEOUT_MS: 10_000,
+    ACK_TIMEOUT_MS: 5_000,
+    PIN_FAIL_MAX: 5,
+    PIN_LOCK_MS: 60_000,
+    HKDF_INFO_PIN_PREFIX: "textsend-v1|pin=",
+    HKDF_INFO_PSK: "textsend-v1|psk",
+    CURVE: "P-256",
+};

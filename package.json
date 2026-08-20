@@ -1,6 +1,6 @@
 {
   "name": "textsend-utools",
-  "version": "0.0.0",
+  "version": "5.0.7",
   "private": true,
   "scripts": {
     "start": "vite",

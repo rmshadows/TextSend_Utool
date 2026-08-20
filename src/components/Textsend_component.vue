@@ -7,7 +7,7 @@
         <div class="input-div">
           <n-input class="input-textarea" @input="inputOnInput" @change="inputOnChange" :value="inputText" type="textarea"
             :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" autofocus="true"
-            :loading="isLoading" />
+            :loading="isLoading" @keydown="onInputKeydown" />
         </div>
       </div>
     </div>
@@ -17,17 +17,21 @@
       <span class="select-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-select :value="ipAddr" :options="ipAddrList" size="large" @update:value="selectOnUpdateValue"
+            <n-select :value="ipAddr" :options="ipAddrList" size="medium" @update:value="selectOnUpdateValue"
               @update-show="updateIpAddrList" />
           </template>
           请选择本机IP
         </n-tooltip>
       </span>
-      <!-- 选择端口 -->
+      <!-- PIN（服务端运行中，点复制 PIN 连接串） -->
+      <span v-if="pinText" class="pin-span" @click="copyPinUri" @contextmenu.prevent="copyPinOnly">
+        PIN {{ pinText }}
+      </span>
+      <span v-if="showClientCount" class="count-span" title="已握手的客户端数">{{ clientCountLabel }}</span>
       <span class="input-span">
         <n-tooltip trigger="hover">
           <template #trigger>
-            <n-input-number :value="portNumber" :validator="portNumberValidator" size="large" :max=65535 placeholder="端口号"
+            <n-input-number :value="portNumber" :validator="portNumberValidator" size="medium" :max=65535 placeholder="端口号"
               :format="portNumberFormator" @update-value="inputNumberUpdate" />
             <!-- 因为已经使用vuex赋值了，所以不能再用v-model，否则：Write operation failed: computed value is readonly -->
             <!-- <n-input-number v-model:value="portNumber" :validator="portNumberValidator" size="large" :max=65535
@@ -37,11 +41,11 @@
         </n-tooltip>
       </span>
       <!-- 按钮组 -->
-      <n-button size="large" class="button" @click="btnLaunch" @contextmenu="btnLaunchContextMenu">
+      <n-button size="medium" class="button" @click="btnLaunch" @contextmenu="btnLaunchContextMenu">
         <span v-html="launchBtnText"></span></n-button>
-      <n-button size="large" class="button" @click="btnChangeMode" :disabled="changeModeBtnStat">
+      <n-button size="medium" class="button" @click="btnChangeMode" :disabled="changeModeBtnStat">
         <span v-html="changeModeBtnText"></span></n-button>
-      <n-button size="large" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
+      <n-button size="medium" class="button" @click="btnAbout"><span> 关&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;于 </span></n-button>
       <!-- About弹出框 -->
       <n-modal v-model:show="showModal">
         <n-card style="width: 600px" title="About" :bordered="false" size="huge" role="dialog" aria-modal="true">
@@ -168,12 +172,8 @@ const lanuchBtnEvent = (oneClient = true) => {
         // 允许7个
         mbStore.serverStart(tsStore.portNumber, 7);
       }
-      // 生成二维码 并修改二维码图片
-      let qrpath = js.UupdateQrImgPath(tsStore.ipAddr, tsStore.portNumber);
-      // 等待二维码生成再更改图片
-      setTimeout(() => {
-        qrStore.setQrImgValue(qrpath);
-      }, 500);
+      // 生成二维码（ts:// + 长密钥）
+      refreshQr();
     }
   } else {
     // 客户端模式
@@ -182,36 +182,7 @@ const lanuchBtnEvent = (oneClient = true) => {
       // 断开链接
       mbStore.clientStop();
     } else {
-      // 链接服务端
-      // 获取IP
-      let addr = tsStore.inputText;
-      let i = undefined;
-      let p = undefined;
-      // 先判是否是ipv6
-      if (js.UisIpv6(addr)) {
-        // 如果是ipv6
-        if (addr.indexOf("]") == -1) {
-          // 如果没有括号，表示不带端口
-          p = 54300;
-          i = tsStore.inputText;
-        } else {
-          addr = addr.split("]:");
-          // 去除前面中括号
-          i = addr[0].replace("[", "");
-          p = addr[1];
-        }  
-      } else {
-        if (addr.indexOf(":") == -1) {
-          // 没有端口号
-          p = 54300;
-          i = tsStore.inputText;
-        } else {
-          addr = addr.split(":");
-          i = addr[0];
-          p = addr[1];
-        }
-      }
-      mbStore.clientStart(i, p);
+      mbStore.clientStart(tsStore.inputText);
     }
   }
 }
@@ -226,22 +197,30 @@ const btnLaunch = () => {
 const btnLaunchContextMenu = () => {
   lanuchBtnEvent(false);
 }
+const sendCurrentText = () => {
+  const text = tsStore.inputText;
+  if (!mbStore.isConnected || !text || !String(text).trim()) {
+    return;
+  }
+  if (mbStore.serverMode) {
+    window.serverSend(text);
+  } else {
+    window.clientSend(text);
+  }
+}
+
+const onInputKeydown = (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    sendCurrentText();
+  }
+}
+
 const btnChangeMode = () => {
-  /**
-   * 1.切换模式
-   * 2.服务端发送
-   * 3.客户端发送
-   */
   if (mbStore.disableChangeModeBtn) {
     console.log("按钮已禁用。");
-  } else if (mbStore.serverMode && mbStore.isConnected) {
-    // 服务端模式 且已连接
-    // console.log("Server send message.");
-    window.serverSend(tsStore.inputText);
-  } else if (!mbStore.serverMode && mbStore.isConnected) {
-    // 客户端模式 且已连接
-    // console.log("Client send msg.");
-    window.clientSend(tsStore.inputText);
+  } else if (mbStore.isConnected) {
+    sendCurrentText();
   } else {
     mbStore.changeServerMode();
   }
@@ -249,6 +228,44 @@ const btnChangeMode = () => {
 const btnAbout = () => {
   showModal.value = true;
 }
+
+const refreshQr = () => {
+  const psk = window.getPskB64 && window.getPskB64();
+  const pin = window.getPin && window.getPin();
+  qrStore.setPsk(psk);
+  qrStore.setPin(pin);
+  if (!psk) {
+    return;
+  }
+  const uri = window.formatUri(tsStore.ipAddr, tsStore.portNumber, psk);
+  const qrpath = js.UupdateQrImgPath(uri);
+  setTimeout(() => {
+    qrStore.setQrImgValue(qrpath);
+  }, 200);
+}
+
+const copyPinUri = () => {
+  const pin = qrStore.pin;
+  if (!pin) {
+    return;
+  }
+  window.copyText(window.formatUri(tsStore.ipAddr, tsStore.portNumber, pin));
+  window.$message.success("已复制 PIN 连接串");
+}
+
+const copyPinOnly = () => {
+  if (!qrStore.pin) {
+    return;
+  }
+  window.copyText(qrStore.pin);
+  window.$message.success("已复制 PIN");
+}
+
+watch(() => tsStore.ipAddr, () => {
+  if (mbStore.isServerStart && qrStore.pskB64) {
+    refreshQr();
+  }
+});
 
 /**
  *  定义变量 
@@ -271,7 +288,13 @@ let launchBtnText = computed(() => tsStore.getLaunchBtnText);
 let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
 // 按钮状态
 let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
-let showError = computed(() => tsStore.showError);
+let pinText = computed(() => qrStore.pin);
+let showClientCount = computed(() => mbStore.serverMode && mbStore.isServerStart);
+let clientCountLabel = computed(() => {
+  const n = mbStore.connectedCount;
+  const max = mbStore.maxConnections;
+  return max > 1 ? `客户端 ${n}/${max}` : `客户端 ${n}`;
+});
 
 
 
@@ -294,58 +317,76 @@ console.log("Init: " + tsStore.portNumber);
 
 
 <style scoped lang="less">
-// 总体
 .textsend-component {
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-// 上:输入框部分div 9/10
 .input {
-  height: 90%;
+  flex: 1 1 auto;
+  min-height: 0;
 
   .input-padding-div {
-    padding: 40px;
+    padding: 12px 16px;
     box-sizing: border-box;
     height: 100%;
   }
 
   .input-div {
-    // height: calc((100% - 2*20px));
     height: 100%;
   }
 
-  // 输入框
   .input-textarea {
     height: 100%;
-    font-size: 33px;
+    font-size: 16px;
   }
 }
 
-// 下:按钮部分div 1/10
 .buttons {
   width: 100%;
-  height: 10%;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-around;
+  gap: 6px;
+  padding: 6px 8px;
+  box-sizing: border-box;
 
-  // 选择框span
   .select-span {
-    width: 200px;
+    width: 160px;
+    max-width: 200px;
+    flex: 1 1 140px;
     text-align: center;
   }
 
-  // 文本框span
+  .pin-span {
+    min-width: 110px;
+    text-align: center;
+    cursor: pointer;
+    user-select: all;
+    font-size: 13px;
+  }
+
+  .count-span {
+    min-width: 72px;
+    text-align: center;
+    user-select: none;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
   .input-span {
-    width: 130px;
+    width: 110px;
     text-align: center;
   }
 
-  // 按钮
   .button {
-    font-size: 20px;
+    font-size: 14px;
   }
 }
 </style>

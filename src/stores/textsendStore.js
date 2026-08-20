@@ -5,16 +5,8 @@ export const useTextsendStore = defineStore('textsend', {
     state: () => {
         return {
             // IP列表
-            ipAddrList: [{
-                "label": "127.0.0.1",
-                "value": "127.0.0.1"
-            },
-            {
-                "label": "::1",
-                "value": "::1"
-            }],
-            // 选取的IP
-            ipAddr: "127.0.0.1",
+            ipAddrList: [],
+            ipAddr: "",
             // 选取的端口号
             portNumber: 54300,
             // 文本框默认文字
@@ -41,7 +33,7 @@ export const useTextsendStore = defineStore('textsend', {
                 if (mbStore.isConnected) {
                     return "请输入要发送的文字";
                 } else {
-                    return "请输入服务端[IP地址]:[端口号]，如：192.168.1.2:54301、[::1]:5000 或者 192.168.1.2 (不加端口号默认54300) ";
+                    return "粘贴 ts:// 或 IP/kPIN，端口可省略（默认 54300），例如 192.168.31.1/k38492017";
                 }
             }
         },

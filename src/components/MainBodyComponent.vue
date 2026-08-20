@@ -32,23 +32,23 @@ let isConnected = computed(() => mbStore.isConnected);
 
 <style scoped lang="less">
 .textsend-body {
-  /* clear: both; */
   width: 100%;
   display: flex;
-  // Viewport Height，视窗高度，1vh=视窗高度的1%
-  // 百分百高 - 80px -70px (header和footer的高度)
-  height: calc((100vh - 80px - 70px));
+  height: calc(100vh - var(--ts-header) - var(--ts-footer));
+  min-height: 0;
 
   .textsend-body-left {
-    // 宽度 = 高度
-    width: calc((100vh - 80px - 70px));
+    flex: 0 1 36%;
+    max-width: min(340px, 42vw);
+    min-width: 160px;
     height: 100%;
   }
 
   .textsend-body-right {
-    // 宽度 = 百分比宽度 - 左边占用的宽度
-    width: calc(100vw - (100vh - 80px - 70px));
+    flex: 1 1 auto;
+    min-width: 240px;
     height: 100%;
+    min-height: 0;
   }
 }
 </style>

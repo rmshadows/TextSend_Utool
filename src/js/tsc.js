@@ -4,20 +4,33 @@
  * @param ref {IP数组} array 
  */
 export const getDefaultIpAddr = (array) => {
-    // 先查找192.168.1
-    for (let i = 0; i < array.length; i++) {  //遍历数组
-        if (String(array[i].value).includes("192.168.1.")) {
-            return array[i].value;
+    const vals = array.map((x) => String(x.value));
+    for (let i = 0; i < vals.length; i++) {
+        if (vals[i].startsWith("192.168.")) {
+            return vals[i];
         }
     }
-    // 再查找192.168
-    for (let i = 0; i < array.length; i++) {
-        if (array[i].value.includes("192.168.")) {
-            // console.log("返回默认IP:" + array[i].value);
-            return array[i].value;
+    let find172 = false;
+    let prefer = null;
+    for (let i = 0; i < vals.length; i++) {
+        const ip = vals[i];
+        if (ip.startsWith("172.")) {
+            prefer = ip;
+            find172 = true;
+        } else if (ip.startsWith("10.") && !find172) {
+            prefer = ip;
         }
     }
-    return "127.0.0.1";
+    if (prefer) {
+        return prefer;
+    }
+    for (let i = 0; i < vals.length; i++) {
+        const ip = vals[i];
+        if (ip !== "127.0.0.1" && ip !== "::1" && !ip.toLowerCase().startsWith("fe80") && !ip.startsWith("169.254")) {
+            return ip;
+        }
+    }
+    return vals.length ? vals[0] : "127.0.0.1";
 }
 
 
@@ -66,9 +79,6 @@ export const UisIpv6 = (ip) => {
  * @param {*} port 
  * @returns 
  */
-export const UupdateQrImgPath = (ip, port) => {
-    ip = String(ip);
-    port = String(port);
-    // console.log("UupdateQrImgPat:生成二维码图片：" + ip + ":" + port);
-    return window.getQrImgPath(ip, port);
+export const UupdateQrImgPath = (content) => {
+    return window.getQrImgPath(String(content));
 }

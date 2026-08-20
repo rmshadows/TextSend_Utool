@@ -3,8 +3,9 @@ import { defineStore } from 'pinia'
 export const useQrStore = defineStore('Qr', {
     state: () => {
         return {
-            // 二维码图片源
             qrImgSrc: "../assets/favicon.png",
+            pin: "",
+            pskB64: "",
         }
     },
     getters: {
@@ -17,6 +18,14 @@ export const useQrStore = defineStore('Qr', {
         setQrImgDefaultValue() {
             console.log("setQrImgDefaultValue: Reset二维码图片 => ../assets/favicon.png");
             this.qrImgSrc = "../assets/favicon.png";
+            this.pin = "";
+            this.pskB64 = "";
+        },
+        setPin(pin) {
+            this.pin = pin || "";
+        },
+        setPsk(pskB64) {
+            this.pskB64 = pskB64 || "";
         },
         /**
          * 修改图片路径

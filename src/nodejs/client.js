@@ -1,210 +1,57 @@
 "use strict";
 
 const profile = require("./profile");
-const net = require('net');
-const crypto = require("./crypto");
-const { Message } = require("./message");
+const protoClient = require("./protocol/client");
 
-/**
- * 客户端创建
- * @param {*} ip 
- * @param {*} port 
- */
-function createTsClient(ip, port) {
-    profile.startStatus = 0;
-    const client = net.connect(port, ip);
-    client.setEncoding("utf-8");
-    let getClientId = true;
-    let getMode = true;
-    let ID = "-1";
-    // 客户端模式由服务端决定
-    let clientModeset = "";
-    // 客户端读取长消息的状态 -1 未读 0:数据未分片，直接读取 1:分片读取模式 2:分片读取到尾巴
-    let clientReadStat = -1;
-    // 分片数据的总和
-    let json_parts = "";
-    let SUPPORT_MODE = {};
-    SUPPORT_MODE["supportMode"] = [1];
-    SUPPORT_MODE = JSON.stringify(SUPPORT_MODE);
-    // 设置超时 10s 后面连接成功会修改
-    client.setTimeout(10000);
-
-    client.on('connect', () => {
-        console.log('client hello.');
-    });
-
-    client.on('timeout', () => {
-        console.log('Server timeout.');
-        client.end();
-        client.destroy();
-    });
-
-    client.on('data', (chunk) => {
-        // 获取服务器发送的ID
-        if (getClientId) {
-            let data = crypto.decryptJSON(chunk);
-            // 解密成功且id是服务器ID 确认消息由服务器发出
-            if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
-                // 从notes获取ID
-                ID = data[2];
-                // 发送支持的模式，由服务端决定
-                console.log("Client get ID: " + ID);
-                client.write(new Message(undefined, profile.MSG_LEN, ID, "SUPPORT-" + SUPPORT_MODE).getJSON() + profile.MESSAGE_END);
-                getClientId = false;
-            }
-        } else if (getMode) {
-            let data = crypto.decryptJSON(chunk);
-            // 服务器会返回一个模式CONFIRM
-            if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
-                // 收到服务器的模式答复
-                if (data[2] != undefined && data[2].split("-")[0] == "CONFIRM") {
-                    clientModeset = Number(data[2].split("-")[1])
-                }
-                // 设置超时一小时
-                client.setTimeout(3599999);
-                console.log("Client mode set at: " + clientModeset);
-                // 添加Socket到字典
-                profile.SOCKET_POOL[ID] = [client, clientModeset];
-                profile.startStatus = 1;
-                getMode = false;
-                // client.write(new Message("test", profile.MSG_LEN, ID, undefined).getJSON() + profile.MESSAGE_END);
-            }
-        } else {
-            // 正常读取JSON (长文本JSON会分多次传输，需要读取到罪末尾的notes方为结束，可以解密)
-            // 长JSON读取流程：读取ID，没有ID就丢弃不读了 / 有ID就一直读取到notes
-            let data = chunk;
-            console.log("Received: " + data);
-            // 读取到末尾
-            if (data.indexOf("}") != -1) {
-                if (clientReadStat != 1) {
-                    // 说明没有分片
-                    clientReadStat = 0;
-                } else {
-                    // 分片模式末尾
-                    clientReadStat = 2;
-                }
-            } else {
-                // 没有读到末尾 但读取到id 进入分片模式
-                if (data.indexOf("{\"id\":") != -1) {
-                    // 进入读取状态
-                    clientReadStat = 1;
-                }
-            }
-            // 无分片模式
-            if (clientReadStat == 0) {
-                json_parts = data;
-            } else {
-                // 分片模式
-                json_parts += data;
-            }
-            // 解密
-            if (clientReadStat == 0 || clientReadStat == 2) {
-                // 恢复
-                clientReadStat = -1;
-                // 这里json_part => data !!
-                data = json_parts;
-                json_parts = "";
-                console.log("解密前：" + data);
-                data = crypto.decryptJSON(data);
-                // 如果ID来源服务器
-                if (data != undefined && Number(data[0]) == profile.SERVER_ID) {
-                    console.log("解密后：" + data);
-                    if (data[2] == profile.FB_MSG) {
-                        // 设置清空文本框
-                        profile.clearText = true;
-                    } else {
-                        // 直接粘贴
-                        // utools.hideMainWindowPasteText(data);
-                        // 使用utools API CTRL + V
-                        utools.hideMainWindowTypeString(data[1])
-                        // 收到消息 放入剪贴板 
-                        utools.copyText(data[1]);
-                        // 反馈
-                        clientFeedback();
-                    }
-                } else {
-                    console.log("Client drop: " + data);
-                }
-            }
+function pasteIncoming(text) {
+    try {
+        if (typeof utools !== "undefined") {
+            utools.copyText(text);
+            utools.hideMainWindowTypeString(text);
         }
-    });
+    } catch (e) {
+        console.log("pasteIncoming: " + e);
+    }
+}
 
-    client.on('close', () => {
-        // 断开复原
-        profile.clearText = false;
-        // 服务端断开
-        console.log('-> disconnected by server: ' + ip);
-        disconnectServer();
-    });
-
-    client.on('error', function (ex) {
-        console.log("Client error: " + ex);
+function createTsClient(raw) {
+    disconnectServer();
+    profile.startStatus = 0;
+    protoClient.connect(raw, pasteIncoming).then((peer) => {
+        profile.currentClient = peer;
+        profile.startStatus = 1;
+        console.log("Log: client session ready");
+    }).catch((e) => {
+        console.log("Client error: " + e);
+        profile.currentClient = null;
         profile.startStatus = 2;
     });
 }
 
-/**
- * 客户端反馈
- */
-function clientFeedback() {
-    for (let key in profile.SOCKET_POOL) {
-        try {
-            // 因为NODE端只能发送JSON所以不用考虑参数2
-            const el = profile.SOCKET_POOL[key][0];
-            let toSend = new Message(undefined,
-                profile.MSG_LEN,
-                key,
-                profile.FB_MSG).getJSON();
-            el.write(toSend + profile.MESSAGE_END);
-        } catch (error) {
-            console.log("client feedback: " + error);
-        }
-    }
-}
-
-
-/**
- * 断开所有连接
- */
 function disconnectServer() {
-    let s = true;
-    for (let key in profile.SOCKET_POOL) {
+    if (profile.currentClient) {
         try {
-            const el = profile.SOCKET_POOL[key][0];
-            console.log("Closing client socket: " + key);
-            el.end();
-            el.destroy();
-        } catch (error) {
-            console.log("关闭Client Socket出错: " + error);
-            s = false;
+            profile.currentClient.close();
+        } catch (e) {
+            console.log("disconnectServer: " + e);
         }
+        profile.currentClient = null;
     }
-    if (s) {
-        profile.SOCKET_POOL = [];
-    }
+    profile.startStatus = -1;
+    profile.clearText = false;
 }
 
-/**
- * 发送 禁止连续调用(中间要有间隔，否则发送 A B 会收到 AB)
- * @param {String} msgString 
- */
-function csend(msgString) {
-    // 会发送给所有连接的服务器
-    for (let key in profile.SOCKET_POOL) {
-        try {
-            // 因为NODE端只能发送JSON所以不用考虑参数2
-            const el = profile.SOCKET_POOL[key][0];
-            let toSend = new Message(msgString, profile.MSG_LEN, key, undefined).getJSON();
-            console.log("Client send message(" + key + "): " + msgString + " => " + toSend);
-            el.write(toSend + profile.MESSAGE_END);
-        } catch (error) {
-            console.log("clientSend: " + error);
-        }
+async function csend(msgString) {
+    const p = profile.currentClient;
+    if (!p || !p.isAlive()) {
+        return;
     }
+    await p.sendText(msgString);
+    profile.clearText = true;
 }
 
 module.exports = {
     createTsClient,
     disconnectServer,
     csend,
-}
+};
