@@ -1,13 +1,14 @@
 {
   "name": "textsend-utools",
-  "version": "5.0.7",
+  "version": "5.0.8",
   "private": true,
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp -f logo.png dist/assets/favicon.png",
     "preview": "vite preview",
-    "udev": "./buildVueforuTools.sh"
+    "udev": "./buildVueforuTools.sh",
+    "pack": "./pack-release.sh"
   },
   "dependencies": {
     "java.io": "^2.4.0",

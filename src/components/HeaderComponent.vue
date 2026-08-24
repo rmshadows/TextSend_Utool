@@ -1,6 +1,6 @@
 <template>
   <div class="header-component">
-    <div class="textsend-title">Textsend for uTools</div>
+    <div class="textsend-title">TextSend</div>
     <span
       class="zoom-label"
       title="滚轮 ±1%；Ctrl+滚轮 ±0.1%；双击恢复 100%"
@@ -37,18 +37,20 @@ const onZoomReset = () => {
   align-items: center;
   gap: 12px;
   user-select: none;
-  background-color: floralwhite;
+  background: var(--ts-surface);
+  border-bottom: 1px solid var(--ts-line);
 
   .textsend-title {
-    font-size: 18px;
+    font-size: 20px;
+    font-weight: 650;
   }
 
   .zoom-label {
-    font-size: 13px;
+    font-size: 12px;
     min-width: 3.2em;
     text-align: center;
     cursor: ns-resize;
-    opacity: 0.75;
+    color: var(--ts-muted);
   }
 }
 </style>

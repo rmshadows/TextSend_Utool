@@ -11,7 +11,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "5.0.7",
+            version: "5.0.8",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来
@@ -22,6 +22,7 @@ export const useMainbodyStore = defineStore('mainbody', {
             clientSessionId: 0, // 每次连接/断开递增，用来作废旧轮询
             connectedCount: 0, // 已握手的客户端数（服务端）
             maxConnections: 1,
+            startGen: 0,
         }
     },
     getters: {
@@ -60,22 +61,20 @@ export const useMainbodyStore = defineStore('mainbody', {
          * @param {Number} maxConnections 最大支持连接数
          */
         async serverStart(port, maxConnections) {
-            // 启动服务
+            if (this.isServerStart) {
+                return;
+            }
             try {
+                this.startGen++;
                 this.maxConnections = maxConnections;
                 this.connectedCount = 0;
                 await window.startServer(port, maxConnections);
                 this.setServerStart();
-                // 首先轮询服务是否成功启动 随后（如果成功启动）自动进行连接轮询
                 this.getIfServerStartSuccessful(500, 10);
             } catch (error) {
                 console.log("mainbodyStore => action:serverStart(): " + error);
                 this.setServerStop();
-                //  启动失败就重设二维码图片
-                const qrStore = useQrStore();
-                setTimeout(() => {
-                    qrStore.setQrImgDefaultValue();
-                }, 2000);
+                useQrStore().setQrImgDefaultValue();
             }
         },
         /**
@@ -83,12 +82,9 @@ export const useMainbodyStore = defineStore('mainbody', {
          */
         async serverStop() {
             try {
+                this.startGen++;
                 await window.stopServer();
-                //  启动失败就重设二维码图片
-                const qrStore = useQrStore();
-                setTimeout(() => {
-                    qrStore.setQrImgDefaultValue();
-                }, 1000);
+                useQrStore().setQrImgDefaultValue();
                 this.setServerStop();
             } catch (error) {
                 console.log("mainbodyStore => action:serverStop(): " + error);
@@ -195,41 +191,32 @@ export const useMainbodyStore = defineStore('mainbody', {
          * @param {*} timeoutSecond 超时 秒 默认10秒
          */
         async getIfServerStartSuccessful(gap = 500, timeoutSecond = 10) {
-            // 是否超时
+            const gen = this.startGen;
             let isTimeout = false;
             let success = false;
             setTimeout(() => {
                 isTimeout = true;
             }, timeoutSecond * 1000);
-            // 当点下启动服务时即开始轮询 直至10秒内发现启动失败 
-            while (!isTimeout && this.serverStart) {
-                // 还没超时以及服务启动状态就会进入循环 
+            while (!isTimeout && this.isServerStart && this.startGen === gen) {
                 let stat = window.startSuccessful();
                 if (stat == 1) {
-                    // 如果成功启动 开始监听连接
                     this.getNodeSocketsConnectStat(gap);
                     success = true;
-                    isTimeout = true;
-                } else if (stat == 2) {
-                    // 启动失败
-                    success = false;
-                    isTimeout = true;
-                    if (!success) {
-                        // 如果启动失败，弹窗
-                        errorHandler("服务启动失败。");
+                    if (typeof window.__textsendRefreshQr === "function") {
+                        window.__textsendRefreshQr();
                     }
+                    break;
+                } else if (stat == 2) {
+                    errorHandler("服务启动失败。");
+                    break;
                 }
-                // 等待超时
-                await new Promise((resolve, reject) => {
+                await new Promise((resolve) => {
                     setTimeout(resolve, gap);
                 });
             }
-            // 没启动成功就结束
-            if (this.serverStart && !success) {
-                this.serverStop();
+            if (this.startGen === gen) {
+                window.setStartStatus(-1);
             }
-            // 还原参数，避免下次调用失败
-            window.setStartStatus(-1);
         },
         /**
          * 轮询客户端是否连接成功(在点击连接后才调用)

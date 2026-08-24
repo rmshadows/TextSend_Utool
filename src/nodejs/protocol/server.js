@@ -7,10 +7,11 @@ const { TsPeer } = require("./peer");
 const { AuthLimiter } = require("./authLimiter");
 
 class TsServer {
-    constructor(port, maxConnections, onText) {
+    constructor(port, maxConnections, onText, onFileIo) {
         this.port = port;
         this.maxConnections = maxConnections || 1;
         this.onText = onText;
+        this.onFileIo = onFileIo || null;
         this.material = Pairing.generate();
         this.peers = [];
         this.limiter = new AuthLimiter();
@@ -61,6 +62,7 @@ class TsServer {
             asServer: true,
             material: this.material,
             onText: this.onText,
+            onFileIo: this.onFileIo,
             onReady: () => {
                 this.limiter.ok(ip);
             },

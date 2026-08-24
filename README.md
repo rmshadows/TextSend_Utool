@@ -1,6 +1,6 @@
 # TextSend_Utools_Plugin
 
-本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.7
+本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.8
 
 ## 支持的平台
 
@@ -95,7 +95,7 @@ npm run dev
 
 # 使用说明
 
->注意，此插件仅用于局域网内文字互传。**5.0.0 已接协议 v1**，可与 PC / 安卓新版互通（`ts://` + PIN / 长密钥）。
+> 局域网即时投送：**5.0.0** 起协议 v1 文字（`ts://` + PIN / 长密钥）；**5.0.8** 起可与 PC / 安卓互发文件。协议以仓库根目录 `README.md` 为准（不再走旧 Object / JSON 外壳）。
 
 ## 服务端模式
 
@@ -115,9 +115,37 @@ npm run dev
 
 2. 点连接。连上后输入框用来发文字。收到的字会复制并尝试粘贴到当前焦点。
 
+## 文件
+
+顶部「文件」「发送」「取消」。点「文件」多选扁文件（最多 50）；**按住 Shift 再点「文件」**选文件夹（不限个数，按相对路径重建）。也可把文件/文件夹拖进窗口。
+
+- 对面落到系统「下载/TextSend」，不弹保存框。
+- 本机收到的图片 ≤20MB 进剪贴板，更大或解码失败则落地。手机发来的图一律落地。
+- 取消只停这一轮，待发还在。发送方取消对面留半截可续传；接收方取消才删半截。连续取消接收 3 次冷却 10 秒。
+- 对端 HELLO 没有 `"file"` 会立刻失败（旧 uTools 5.0.7）。
+- 修改 `tspreload.js` 或 `src/nodejs/` 或 `ui/` 后须重新载入插件；构建用 `npm run udev` 或 `npm run build`（会自动拷 `logo.png` → `dist/assets/favicon.png`）。
+
+## 维护说明（5.0.8）
+
+- **发文件**：2026-08-24 修稳（`writeFrameWait` 回压；取消 `cancelEpoch` + `_sendControlWait`）。用户实机：服务端→安卓可用。
+- **二维码**：监听成功后再刷；快速启停用 `qrGen` 丢弃过期回调；未启动左侧显示打包的 `logo.png`。
+- **可选 polish**（未做）：待发列表 UI 对齐 PC；文件夹打勾多选；`/tmp/tsqrcode-*.png` 定期清理。
+
 # 更新日志
 
 5.0.0 起为协议 v1（二进制帧 / AES-GCM / `ts://`），与旧 0.0.x JSON 协议不互通。
+
+- 2026.8.24——5.0.8（续）
+  - **修**：服务端发文件进度过早 / 取消无效（`writeFrameWait` + `cancelEpoch`）
+  - **修**：未启动 logo 裂图；快速启停二维码不显示（`qrGen`、监听成功后再刷码）
+  - 构建：`npm run build` 自动拷 favicon；`ui/` bundle 约 `index-56b0de77.js`
+
+- 2026.8.23——5.0.8
+  - 文件投送：顶部「文件 / 发送 / 取消」；待发列表；进度与速度
+  - 落到「下载/TextSend」；图 ≤20MB 进剪贴板；续传（头/尾 SHA-256）
+  - Shift+「文件」发文件夹；拖入文件/文件夹
+  - HELLO `caps` 含 `"file"`，与 PC 5.0.53 / Android 5.0.10 对齐
+  - UI：冷灰主题、帮助、IP 悬停、剪贴板图预览、单「发送」按钮
 
 - 2026.8.20——5.0.7
   - 服务端显示已连接客户端数（右键启动为 n/7）
@@ -179,34 +207,10 @@ npm run dev
 
 # 开发备忘录
 
-> 写下来免得忘了
+> 协议以仓库根目录 `README.md` 为准。下面旧 Object / JSON 外壳说明已过时，仅作历史。
 
-- 由于插件使用的是Nodejs书写，只能传输JSON了，原本Java客户端传输的都是Object，但Java传输的Object到Node这边只能读不能写，所以才想出新增JSON传输模式。
-
-- 连接的建立：
-
-  ```
-  1.服务端打开监听
-  2.客户端连接成功后，服务端发送ID给客户端
-  3.收到服务端给的ID后，客户端发送支持的模式到服务端
-  4.服务端决定使用何种方式进行传输，告知客户端
-  5.客户端以服务端告知的方式开始通信
-  JSON传输格式：{"id": "xxxx", "data": "xxxx", "notes": "xxxx"}
-  以上所有参数全部加密
-  ```
-
-- 文字的传输：
-
-  ```
-  1.A发送文字到B
-  2.B首先检查ID是否正确，不正确的丢弃
-  3.B检查无误，发送反馈信息到A
-  4.A收到反馈信息后清空文本框中的内容
-  ```
-
-- Electron使用IPC通信，但utools这边似乎得用preload加载出子窗口后，preload加载的窗口才能向子窗口发送数据（就是我注释掉的那些IPC代码），具体看utools文档 => [这里](https://www.u.tools/docs/developer/api.html#%E7%A4%BA%E4%BE%8B-21)。到底，也就是主线程如何与渲染线程通讯的问题。
-
-- 因为上面提到的IPC通讯麻烦，所以我直接在vue这边轮询preload里面的接口了，是占用资源了。。。。
+- **现行**：TCP 上二进制帧 `TS` + AES-256-GCM；HELLO `caps: ["text","file"]`；文字 TEXT+ACK；文件 `FILE_META/CHUNK/DONE/CONTROL`。
+- Vue 仍轮询 preload（`getConnectionStat` / `getFileStat`），没有走 Electron IPC。
 
 
 

@@ -8,3 +8,4 @@ if [ "$?" -eq 0 ];then
     rm -r ./dist
 fi
 cp logo.png ./ui/assets/favicon.png
+sed -i 's/ crossorigin//g' ./ui/index.html

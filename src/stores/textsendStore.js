@@ -14,8 +14,8 @@ export const useTextsendStore = defineStore('textsend', {
             // 是否加载中
             isLoading: false,
             // 按钮文字
-            launchBtnText: "启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动",
-            changeModeBtnText: "切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换",
+            launchBtnText: "启动",
+            changeModeBtnText: "切换",
         }
     },
     getters: {
@@ -47,16 +47,16 @@ export const useTextsendStore = defineStore('textsend', {
             if (mbStore.serverMode) {
                 // 如果服务启动
                 if (mbStore.isServerStart) {
-                    return " 停&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;止 ";
+                    return "停止";
                 } else {
-                    return " 启&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;动 ";
+                    return "启动";
                 }
             } else {
                 // 如果是客户端模式
                 if (mbStore.isConnected) {
-                    return " 断&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;开 ";
+                    return "断开";
                 } else {
-                    return " 连&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;接 ";
+                    return "连接";
                 }
             }
         },
@@ -67,9 +67,9 @@ export const useTextsendStore = defineStore('textsend', {
         getChangeModeBtnText() {
             const mbStore = useMainbodyStore();
             if (mbStore.isConnected) {
-                return " 发&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;送 ";
+                return "发送";
             } else {
-                return " 切&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;换 ";
+                return "切换";
             }
         },
     },

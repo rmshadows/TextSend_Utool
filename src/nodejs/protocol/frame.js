@@ -2,7 +2,7 @@
 
 const C = require("./constants");
 
-function writeFrame(socket, type, payload) {
+function frameBytes(type, payload) {
     const body = payload && payload.length ? Buffer.from(payload) : Buffer.alloc(0);
     if (body.length > C.MAX_FRAME) {
         throw new Error("payload too large: " + body.length);
@@ -12,7 +12,61 @@ function writeFrame(socket, type, payload) {
     header[2] = C.VERSION;
     header[3] = type;
     header.writeUInt32BE(body.length, 4);
-    socket.write(Buffer.concat([header, body]));
+    return Buffer.concat([header, body]);
+}
+
+function writeFrame(socket, type, payload) {
+    socket.write(frameBytes(type, payload));
+}
+
+/** 等 socket 可写再继续，避免分片堆在内核缓冲里进度虚高、FILE_DONE 过早 */
+function writeFrameWait(socket, type, payload, cancelled) {
+    const packet = frameBytes(type, payload);
+    return new Promise((resolve, reject) => {
+        if (!socket || socket.destroyed || !socket.writable) {
+            reject(new Error("disconnected"));
+            return;
+        }
+        const cleanup = () => {
+            socket.removeListener("drain", onDrain);
+            socket.removeListener("error", onErr);
+            socket.removeListener("close", onClose);
+        };
+        const onDrain = () => {
+            cleanup();
+            resolve();
+        };
+        const onErr = (e) => {
+            cleanup();
+            reject(e);
+        };
+        const onClose = () => {
+            cleanup();
+            reject(new Error("disconnected"));
+        };
+        const tryWrite = () => {
+            if (cancelled && cancelled()) {
+                cleanup();
+                reject(new Error("cancelled"));
+                return;
+            }
+            if (!socket.writable) {
+                cleanup();
+                reject(new Error("disconnected"));
+                return;
+            }
+            const ok = socket.write(packet);
+            if (ok) {
+                cleanup();
+                resolve();
+            } else {
+                socket.once("drain", onDrain);
+                socket.once("error", onErr);
+                socket.once("close", onClose);
+            }
+        };
+        tryWrite();
+    });
 }
 
 class FrameReader {
@@ -48,4 +102,4 @@ class FrameReader {
     }
 }
 
-module.exports = { writeFrame, FrameReader };
+module.exports = { writeFrame, writeFrameWait, FrameReader };

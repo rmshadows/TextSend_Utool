@@ -2,6 +2,7 @@
 
 const profile = require("./profile");
 const protoClient = require("./protocol/client");
+const fileQueue = require("./fileQueue");
 
 function pasteIncoming(text) {
     try {
@@ -17,8 +18,9 @@ function pasteIncoming(text) {
 function createTsClient(raw) {
     disconnectServer();
     profile.startStatus = 0;
-    protoClient.connect(raw, pasteIncoming).then((peer) => {
+    protoClient.connect(raw, pasteIncoming, fileQueue.fileIo()).then((peer) => {
         profile.currentClient = peer;
+        fileQueue.attachPeer(peer);
         profile.startStatus = 1;
         console.log("Log: client session ready");
     }).catch((e) => {

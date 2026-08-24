@@ -5,7 +5,7 @@ const { TsPeer } = require("./peer");
 const TsUri = require("./tsUri");
 const C = require("./constants");
 
-function connect(raw, onText) {
+function connect(raw, onText, onFileIo) {
     return new Promise((resolve, reject) => {
         let uri;
         try {
@@ -40,6 +40,7 @@ function connect(raw, onText) {
                 asServer: false,
                 uri,
                 onText,
+                onFileIo,
                 onReady: () => done(null, peer),
                 onClosed: () => {
                     if (peer && !peer.handshakeOk) {

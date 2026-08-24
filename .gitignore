@@ -9,6 +9,7 @@ lerna-debug.log*
 
 RELEASE
 DEBUG_RELEASE
+release/
 node_modules
 .DS_Store
 dist

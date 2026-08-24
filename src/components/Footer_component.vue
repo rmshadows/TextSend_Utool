@@ -47,10 +47,22 @@ footer_year.value = getFooterYear();
 .footer-component {
   width: 100%;
   height: var(--ts-footer);
-  font-size: 12px;
+  font-size: 11px;
+  color: var(--ts-muted);
   display: flex;
   justify-content: center;
   align-items: center;
   user-select: none;
+  border-top: 1px solid var(--ts-line);
+  background: var(--ts-surface);
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    text-decoration: none;
+    border-bottom: 1px dotted var(--ts-line);
+  }
 }
 </style>

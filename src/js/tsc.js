@@ -52,7 +52,13 @@ export const errorHandler = (error) => {
  * 更新IP地址列表(选择框) / U
  */
 export const UgetIpAddrList = () => {
+    if (typeof window.getIpAddr !== "function") {
+        return [];
+    }
     let ips = window.getIpAddr();
+    if (!Array.isArray(ips)) {
+        return [];
+    }
     let ipA = [];
     for (let i = 0; i < ips.length; i++) {
         let seel = { label: ips[i], value: ips[i] }
@@ -81,4 +87,52 @@ export const UisIpv6 = (ip) => {
  */
 export const UupdateQrImgPath = (content) => {
     return window.getQrImgPath(String(content));
+}
+
+export const fileUrlToPath = (raw) => {
+    let u = String(raw || "").trim();
+    if (!u || u.startsWith("#")) {
+        return "";
+    }
+    if (u.startsWith("file://")) {
+        try {
+            u = decodeURIComponent(u.replace(/^file:\/\//i, ""));
+        } catch (e) {
+            u = u.replace(/^file:\/\//i, "");
+        }
+        if (u.startsWith("localhost/")) {
+            u = u.substring("localhost".length);
+        }
+        if (/^\/[A-Za-z]:/.test(u)) {
+            u = u.substring(1);
+        }
+    }
+    return u;
+}
+
+export const pathsFromDataTransfer = (dt) => {
+    const out = [];
+    const seen = new Set();
+    const add = (p) => {
+        const s = String(p || "").trim();
+        if (!s || seen.has(s)) {
+            return;
+        }
+        seen.add(s);
+        out.push(s);
+    };
+    if (dt && dt.files && dt.files.length) {
+        for (let i = 0; i < dt.files.length; i++) {
+            const f = dt.files[i];
+            const p = (window.getPathForDroppedFile && window.getPathForDroppedFile(f)) || f.path || "";
+            add(p);
+        }
+    }
+    if (!out.length && dt && typeof dt.getData === "function") {
+        const blob = [dt.getData("text/uri-list"), dt.getData("text/plain")].filter(Boolean).join("\n");
+        for (const line of blob.split(/\r?\n/)) {
+            add(fileUrlToPath(line));
+        }
+    }
+    return out;
 }

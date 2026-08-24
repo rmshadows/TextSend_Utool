@@ -2,6 +2,7 @@
 
 const profile = require("./profile");
 const { TsServer } = require("./protocol/server");
+const fileQueue = require("./fileQueue");
 
 function pasteIncoming(text) {
     try {
@@ -17,7 +18,7 @@ function pasteIncoming(text) {
 function createTsServer(port, maxConnections = 1) {
     closeAllServers();
     profile.startStatus = 0;
-    const server = new TsServer(Number(port), maxConnections, pasteIncoming);
+    const server = new TsServer(Number(port), maxConnections, pasteIncoming, fileQueue.fileIo());
     profile.currentServer = server;
     server.listen().then(() => {
         profile.startStatus = 1;

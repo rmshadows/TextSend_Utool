@@ -5,6 +5,25 @@ html, body, #app {
 }
 
 :root {
-  --ts-header: 44px;
-  --ts-footer: 32px;
+  --ts-header: 40px;
+  --ts-footer: 22px;
+  --ts-bg: #f4f5f8;
+  --ts-surface: #ffffff;
+  --ts-ink: #1a1b1f;
+  --ts-muted: #6b7280;
+  --ts-line: #e5e7eb;
+  --ts-chip: #ede4ff;
+  --ts-accent: #5c00ff;
+  --ts-danger: #dc2626;
+  font-family: "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--ts-ink);
+  background: var(--ts-bg);
+}
+
+body {
+  background: var(--ts-bg);
+}
+
+a {
+  color: inherit;
 }
