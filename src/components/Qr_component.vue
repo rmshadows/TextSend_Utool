@@ -1,7 +1,13 @@
 <template>
   <div class="qr-component">
     <div class="qr-component-div">
-      <img class="qr-code-img" :src="qrImgSrc" title="点图复制长连接串" @click="handleClickImg" />
+      <img
+        class="qr-code-img"
+        :src="qrImgSrc"
+        :title="hasQr ? '点击复制长密钥连接串' : ''"
+        @click="handleCopyUri"
+        @contextmenu.prevent="handleCopyUri"
+      />
       <div v-if="pinText" class="qr-meta">
         <button type="button" class="pin" title="点复制短连接串，右键只复制 PIN"
           @click="copyPinUri" @contextmenu.prevent="copyPinOnly">PIN {{ pinText }}</button>
@@ -39,6 +45,10 @@ function resolveQrSrc(raw) {
 
 const qrImgSrc = computed(() => resolveQrSrc(qrStore.qrImgSrc));
 const pinText = computed(() => qrStore.pin);
+const hasQr = computed(() => {
+  const src = String(qrStore.qrImgSrc || "");
+  return !!qrStore.pskB64 && src && !src.includes("favicon");
+});
 const showClientCount = computed(() => mbStore.serverMode && mbStore.isServerStart);
 const clientCountLabel = computed(() => {
   const n = mbStore.connectedCount;
@@ -46,16 +56,11 @@ const clientCountLabel = computed(() => {
   return max > 1 ? `${n}/${max}` : `${n}`;
 });
 
-const handleClickImg = () => {
-  const psk = qrStore.pskB64;
-  if (!psk) {
+const handleCopyUri = () => {
+  if (!hasQr.value) {
     return;
   }
-  const uri = window.formatUri(tsStore.ipAddr, tsStore.portNumber, psk);
-  window.copyText(uri);
-  if (window.$message) {
-    window.$message.success("已复制密钥连接串");
-  }
+  qrStore.copyPskUri(tsStore.ipAddr, tsStore.portNumber);
 };
 
 const copyPinUri = () => {
@@ -83,19 +88,27 @@ const copyPinOnly = () => {
 .qr-component {
   height: 100%;
   width: 100%;
+  min-height: 0;
   user-select: none;
 
   .qr-component-div {
     height: 100%;
+    min-height: 0;
     padding: 16px;
     box-sizing: border-box;
     position: relative;
+    display: flex;
+    flex-direction: column;
 
     .qr-code-img {
-      height: 100%;
+      flex: 1 1 auto;
       width: 100%;
+      min-height: 0;
+      max-height: 100%;
       object-fit: contain;
+      object-position: center;
       cursor: pointer;
+      background: #fff;
     }
   }
 }

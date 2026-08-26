@@ -12,10 +12,6 @@ export function clampZoom(n) {
     return Math.min(MAX, Math.max(MIN, Math.round(x * 10) / 10));
 }
 
-export function getZoom() {
-    return current;
-}
-
 export function applyZoom(n) {
     current = clampZoom(n);
     document.documentElement.style.zoom = String(current / 100);

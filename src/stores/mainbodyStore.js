@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { useQrStore } from './qrStore';
 import { useTextsendStore } from './textsendStore';
 import { errorHandler } from "../js/tsc";
+import * as settings from "../js/settings";
 
 // 你可以对 `defineStore()` 的返回值进行任意命名，但最好使用 store 的名字，同时以 `use` 开头且以 `Store` 结尾。(比如 `useUserStore`，`useCartStore`，`useProductStore`)
 // 第一个参数是你的应用中 Store 的唯一 ID。
@@ -11,7 +12,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "5.0.8",
+            version: "5.0.11",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来
@@ -105,7 +106,7 @@ export const useMainbodyStore = defineStore('mainbody', {
                 this.clientSocketStat = 0;
                 this.setConnectStat(false);
                 await window.startClient(raw);
-                this.getIfClientStartSuccessful(500, 10, sessionId);
+                this.getIfClientStartSuccessful(500, 10, sessionId, raw);
                 this.setClientStart();
             } catch (error) {
                 this.setClientStop();
@@ -202,9 +203,12 @@ export const useMainbodyStore = defineStore('mainbody', {
                 if (stat == 1) {
                     this.getNodeSocketsConnectStat(gap);
                     success = true;
+                    const tsStore = useTextsendStore();
+                    const qrStore = useQrStore();
                     if (typeof window.__textsendRefreshQr === "function") {
                         window.__textsendRefreshQr();
                     }
+                    qrStore.copyPskUri(tsStore.ipAddr, tsStore.portNumber);
                     break;
                 } else if (stat == 2) {
                     errorHandler("服务启动失败。");
@@ -223,7 +227,7 @@ export const useMainbodyStore = defineStore('mainbody', {
          * @param {Number} gap 轮询间隔 毫秒 默认500毫秒
          * @param {Number} timeoutSecond 超时 秒 默认10秒
          */
-        async getIfClientStartSuccessful(gap = 500, timeoutSecond = 10, sessionId = this.clientSessionId) {
+        async getIfClientStartSuccessful(gap = 500, timeoutSecond = 10, sessionId = this.clientSessionId, raw = "") {
             // 是否超时
             let isClientTimeout = false;
             let success = false;
@@ -237,6 +241,7 @@ export const useMainbodyStore = defineStore('mainbody', {
                 if (stat == 1) {
                     // 如果连接成功 开始监听连接
                     this.clientSocketStat = 1;
+                    settings.saveClientConnectionFromRaw(raw);
                     // 连接串和发文字共用输入框，连上后清掉，避免当成要发的字
                     const tsStore = useTextsendStore();
                     tsStore.setInputValueSync("");
@@ -316,17 +321,6 @@ export const useMainbodyStore = defineStore('mainbody', {
         setConnectStat(value) {
             if (value != this.isConnected) {
                 this.isConnected = value;
-                value ? console.log("设置连接成功状态") : console.log("设置连接断开状态");
-            }
-        },
-        /**
-         * 修改连接状态
-         */
-        changeConnectStat() {
-            if (this.isConnected) {
-                this.isConnected = false;
-            } else {
-                this.isConnected = true;
             }
         },
         /**
@@ -334,25 +328,7 @@ export const useMainbodyStore = defineStore('mainbody', {
          * @param {boolean} value 
          */
         setServerStat(value) {
-            if (value) {
-                this.isServerStart = true;
-                console.log("设置服务端启动状态");
-            } else {
-                this.isServerStart = false;
-                console.log("设置服务端停止状态");
-            }
-        },
-        /**
-         * 修改服务端启动状态
-         */
-        changeServerStat() {
-            if (this.isServerStart) {
-                this.isServerStart = false;
-                console.log("服务端停止");
-            } else {
-                this.isServerStart = true;
-                console.log("服务端启动");
-            }
+            this.isServerStart = !!value;
         },
         /**
          * 禁用切换模式按钮

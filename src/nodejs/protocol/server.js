@@ -7,12 +7,13 @@ const { TsPeer } = require("./peer");
 const { AuthLimiter } = require("./authLimiter");
 
 class TsServer {
-    constructor(port, maxConnections, onText, onFileIo) {
+    constructor(port, maxConnections, onText, onFileIo, pinOpts) {
         this.port = port;
         this.maxConnections = maxConnections || 1;
         this.onText = onText;
         this.onFileIo = onFileIo || null;
-        this.material = Pairing.generate();
+        const opts = pinOpts || {};
+        this.material = Pairing.forSession(!!opts.customEnabled, opts.customPin || "");
         this.peers = [];
         this.limiter = new AuthLimiter();
         this.server = null;

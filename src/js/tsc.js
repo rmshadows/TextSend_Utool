@@ -69,26 +69,6 @@ export const UgetIpAddrList = () => {
 }
 
 
-/**
- * 返回是否ipv6
- * @param {string} ip 
- * @returns 
- */
-export const UisIpv6 = (ip) => {
-    return window.isIPv6(ip);
-}
-
-
-/**
- * 生成二维码图片 tsc => preload =>  node
- * @param {*} ip 
- * @param {*} port 
- * @returns 
- */
-export const UupdateQrImgPath = (content) => {
-    return window.getQrImgPath(String(content));
-}
-
 export const fileUrlToPath = (raw) => {
     let u = String(raw || "").trim();
     if (!u || u.startsWith("#")) {

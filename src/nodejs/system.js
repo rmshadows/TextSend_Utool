@@ -47,8 +47,8 @@ function familyOk(info, type) {
 }
 
 /**
- * 获取IP。局域网在前，127 / fe80 / 169.254 在后。
- * @param {Number} type 类型0:全部 1:ip4 2:ip6
+ * 获取 IP。局域网在前，127 / fe80 / 169.254 在后。
+ * @param {Number} type 0=全部 1=IPv4 2=IPv6
  */
 function getIpAddr(type = 0) {
     const lan = [];
@@ -69,81 +69,11 @@ function getIpAddr(type = 0) {
     return lan.concat(junk);
 }
 
-/**
- * 生成从minNum到maxNum的随机数
- * @param {Number} minNum 
- * @param {Number} maxNum 
- * @returns 
- */
-function randomNum(minNum, maxNum) {
-    switch (arguments.length) {
-        case 1:
-            return parseInt(Math.random() * minNum + 1, 10);
-            break;
-        case 2:
-            return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10);
-            break;
-        default:
-            return 0;
-            break;
-    }
-}
-
-
-/**
- * 定时器 + Promise 实现 sleep
- * https://cloud.tencent.com/developer/article/1802782
-// async await 的方式
-async function test() {
-  console.log(1);
-  await promiseSleep(3000);
-  console.log(2);
-}
-
-// Promise 的链式调用方式
-async function test() {
-  console.log(1);
-  promiseSleep(3000).then(() => {
-    console.log(2);
-  });
-}
- * @param {*} ms 
- * @returns 
- */
-const promiseSleep = (ms) => {
-    new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-
-/**
- * 真正的阻塞事件循环，阻塞线程直到超时，不要在主线程上使用 
- * https://cloud.tencent.com/developer/article/1802782
- * @param {Number} ms delay
- * @returns {String} ok|not-equal|timed-out
- */
-function realSleep(ms) {
-    const valid = ms > 0 && ms < Infinity;
-    if (valid === false) {
-        if (typeof ms !== 'number' && typeof ms !== 'bigint') {
-            throw TypeError('ms must be a number');
-        }
-        throw RangeError('ms must be a number that is greater than 0 but less than Infinity');
-    }
-    return Atomics.wait(int32, 0, 0, Number(ms))
-}
-
-/**
- * 时间戳
- * @returns 
- */
 function getTimestamp() {
     return Number(new Date().getTime());
 }
 
-
 module.exports = {
     getIpAddr,
-    randomNum,
     getTimestamp,
-}
+};

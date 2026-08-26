@@ -13,9 +13,6 @@ export const useTextsendStore = defineStore('textsend', {
             inputText: "",
             // 是否加载中
             isLoading: false,
-            // 按钮文字
-            launchBtnText: "启动",
-            changeModeBtnText: "切换",
         }
     },
     getters: {
@@ -95,7 +92,6 @@ export const useTextsendStore = defineStore('textsend', {
          * @param {String | Number} value 
          */
         setPortNumberValue(value) {
-            console.log("setPortNumberValue: 设置端口号 => " + value);
             this.portNumber = value;
         },
         /**
@@ -103,19 +99,7 @@ export const useTextsendStore = defineStore('textsend', {
          * @param {String} value 
          */
         setInputValueSync(value) {
-            console.log("setInputValue: 设置文本框内容 => " + value);
             this.inputText = value;
-        },
-        /**
-         * 文本框是否显示正在输入
-         */
-        changeIsLoadingValue() {
-            if (this.isLoading) {
-                this.isLoading = false;
-            } else {
-                this.isLoading = true;
-            }
-            console.log("changeIsLoadingValue: => " + this.isLoading);
         },
         /**
          * 是否显示文本框加载中
@@ -124,7 +108,6 @@ export const useTextsendStore = defineStore('textsend', {
         setIsLoadingValue(value) {
             if (value != this.isLoading) {
                 this.isLoading = value;
-                console.log("set isLoading value to " + this.isLoading);
             }
         },
         /**

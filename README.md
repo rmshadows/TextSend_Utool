@@ -1,6 +1,6 @@
 # TextSend_Utools_Plugin
 
-本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.8
+本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.11
 
 ## 支持的平台
 
@@ -125,15 +125,32 @@ npm run dev
 - 对端 HELLO 没有 `"file"` 会立刻失败（旧 uTools 5.0.7）。
 - 修改 `tspreload.js` 或 `src/nodejs/` 或 `ui/` 后须重新载入插件；构建用 `npm run udev` 或 `npm run build`（会自动拷 `logo.png` → `dist/assets/favicon.png`）。
 
-## 维护说明（5.0.8）
+## 维护说明（5.0.11）
 
-- **发文件**：2026-08-24 修稳（`writeFrameWait` 回压；取消 `cancelEpoch` + `_sendControlWait`）。用户实机：服务端→安卓可用。
-- **二维码**：监听成功后再刷；快速启停用 `qrGen` 丢弃过期回调；未启动左侧显示打包的 `logo.png`。
-- **可选 polish**（未做）：待发列表 UI 对齐 PC；文件夹打勾多选；`/tmp/tsqrcode-*.png` 定期清理。
+- **发文件**：2026-08-24 修稳（`writeFrameWait` 回压；取消 `cancelEpoch` + `_sendControlWait`）。
+- **二维码**：监听成功后再刷；开服成功自动复制长密钥连接串；点侧栏二维码复制长 key（不再弹放大窗）。
+- **About**：Android 下载 GitHub/Gitee 悬停小码（打开关于时预生成）。
+- **客户端**：可选「记住上次连接」（仅 PIN，默认关）；切回服务端清空连接串输入框。
+- **配置**：`src/js/settings.js` + `tspreload.js`（`dbStorage`）；改 preload 或 nodejs 后须重载插件。
 
 # 更新日志
 
 5.0.0 起为协议 v1（二进制帧 / AES-GCM / `ts://`），与旧 0.0.x JSON 协议不互通。
+
+- 2026.8.26——5.0.11
+  - **客户端**：「记住上次连接」（默认关，仅 PIN；`textsend.rememberClientConnection` + host/port/pin）
+  - **UI**：底栏两行（服务设置 / 切换·帮助·关于）；About Android 下载（GitHub/Gitee 悬停二维码）
+  - **二维码**：点图复制长密钥；开服成功自动复制；去掉放大弹窗
+  - **修**：切服务端时清空客户端连接串；About 下载码首次悬停空白（预生成 + 延迟读 file://）
+  - `ui/` bundle `index-4bb7be54.js`
+
+- 2026.8.26——5.0.10
+  - **固定 PIN**（默认关）：`customPinEnabled` / `customPin`；先输入 8 位再勾选
+  - **代码清理**：删旧协议遗留、未用依赖、死 API；瘦身 `mqrcode.cjs` / `system.js`
+
+- 2026.8.25——5.0.9
+  - **启动即开服**（默认关）+ 记住监听 IP/端口（`textsend.autoStartServer` / `listenIp` / `listenPort`）
+  - 侧栏二维码 `object-fit: contain`；点图放大（5.0.11 已改为点复制）
 
 - 2026.8.24——5.0.8（续）
   - **修**：服务端发文件进度过早 / 取消无效（`writeFrameWait` + `cancelEpoch`）

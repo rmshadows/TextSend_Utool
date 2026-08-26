@@ -15,10 +15,13 @@ function pasteIncoming(text) {
     }
 }
 
-function createTsServer(port, maxConnections = 1) {
+function createTsServer(port, maxConnections = 1, customEnabled = false, customPin = "") {
     closeAllServers();
     profile.startStatus = 0;
-    const server = new TsServer(Number(port), maxConnections, pasteIncoming, fileQueue.fileIo());
+    const server = new TsServer(Number(port), maxConnections, pasteIncoming, fileQueue.fileIo(), {
+        customEnabled: !!customEnabled,
+        customPin: String(customPin || ""),
+    });
     profile.currentServer = server;
     server.listen().then(() => {
         profile.startStatus = 1;

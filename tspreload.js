@@ -5,7 +5,6 @@ const client = require("./src/nodejs/client");
 const profile = require("./src/nodejs/profile");
 const fileQueue = require("./src/nodejs/fileQueue");
 const TsUri = require("./src/nodejs/protocol/tsUri");
-const net = require("net");
 const fs = require("fs");
 const path = require("path");
 
@@ -14,7 +13,9 @@ window.getIpAddr = function () {
 };
 
 window.startServer = function (port, maxConnections = 1) {
-    server.createTsServer(port, maxConnections);
+    const customEnabled = !!utools.dbStorage.getItem("textsend.customPinEnabled");
+    const customPin = String(utools.dbStorage.getItem("textsend.customPin") || "");
+    server.createTsServer(port, maxConnections, customEnabled, customPin);
 };
 
 window.stopServer = function () {
@@ -41,15 +42,18 @@ window.getQrImgPath = function (content) {
     return qrcode.generateQR(content, utools.getPath("temp"));
 };
 
-window.isIPv6 = function (ip) {
-    if (String(ip).indexOf("]:") !== -1) {
-        return true;
+/** 下载链接等小二维码（侧栏连接码仍用 getQrImgPath 512） */
+const linkQrCache = Object.create(null);
+window.getLinkQrImgPath = function (content) {
+    const key = String(content || "");
+    if (linkQrCache[key]) {
+        return linkQrCache[key];
     }
-    return net.isIPv6(ip);
-};
-
-window.getTempDir = function () {
-    return utools.getPath("temp");
+    const fp = qrcode.generateQR(key, utools.getPath("temp"), 120);
+    if (fp && !String(fp).includes("favicon")) {
+        linkQrCache[key] = fp;
+    }
+    return fp;
 };
 
 window.getConnectionStat = function () {
@@ -94,6 +98,16 @@ window.copyText = function (text) {
     }
 };
 
+window.openExternalUrl = function (url) {
+    const u = String(url || "").trim();
+    if (!u) {
+        return;
+    }
+    if (typeof utools.shellOpenExternal === "function") {
+        utools.shellOpenExternal(u);
+    }
+};
+
 window.getUiZoom = function () {
     const v = utools.dbStorage.getItem("textsend.zoom");
     return v == null ? 100 : Number(v);
@@ -103,8 +117,124 @@ window.setUiZoom = function (n) {
     utools.dbStorage.setItem("textsend.zoom", n);
 };
 
-window.showPath = function () {
-    console.log("用户的 home 文件夹（主目录）: " + utools.getPath("home"));
+window.getAutoStartServer = function () {
+    return !!utools.dbStorage.getItem("textsend.autoStartServer");
+};
+
+window.setAutoStartServer = function (v) {
+    utools.dbStorage.setItem("textsend.autoStartServer", !!v);
+};
+
+window.getListenIp = function () {
+    const v = utools.dbStorage.getItem("textsend.listenIp");
+    return v == null ? "" : String(v);
+};
+
+window.setListenIp = function (ip) {
+    if (ip != null && String(ip).trim()) {
+        utools.dbStorage.setItem("textsend.listenIp", String(ip).trim());
+    }
+};
+
+window.getListenPort = function () {
+    const v = utools.dbStorage.getItem("textsend.listenPort");
+    if (v == null) {
+        return 54300;
+    }
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 1 && n <= 65535 ? n : 54300;
+};
+
+window.setListenPort = function (port) {
+    const n = Number(port);
+    if (Number.isFinite(n) && n >= 1 && n <= 65535) {
+        utools.dbStorage.setItem("textsend.listenPort", n);
+    }
+};
+
+window.getCustomPinEnabled = function () {
+    return !!utools.dbStorage.getItem("textsend.customPinEnabled");
+};
+
+window.setCustomPinEnabled = function (v) {
+    utools.dbStorage.setItem("textsend.customPinEnabled", !!v);
+};
+
+window.getCustomPin = function () {
+    const v = utools.dbStorage.getItem("textsend.customPin");
+    return v == null ? "" : String(v);
+};
+
+window.setCustomPin = function (pin) {
+    const s = String(pin || "").trim();
+    if (s && !/^\d{8}$/.test(s)) {
+        return false;
+    }
+    utools.dbStorage.setItem("textsend.customPin", s);
+    return true;
+};
+
+window.getRememberClientConnection = function () {
+    return !!utools.dbStorage.getItem("textsend.rememberClientConnection");
+};
+
+window.setRememberClientConnection = function (v) {
+    utools.dbStorage.setItem("textsend.rememberClientConnection", !!v);
+    if (!v) {
+        utools.dbStorage.removeItem("textsend.clientHost");
+        utools.dbStorage.removeItem("textsend.clientPort");
+        utools.dbStorage.removeItem("textsend.clientPin");
+    }
+};
+
+window.getClientHost = function () {
+    const v = utools.dbStorage.getItem("textsend.clientHost");
+    return v == null ? "" : String(v).trim();
+};
+
+window.getClientPort = function () {
+    const v = utools.dbStorage.getItem("textsend.clientPort");
+    if (v == null) {
+        return 54300;
+    }
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 1 && n <= 65535 ? n : 54300;
+};
+
+window.getClientPin = function () {
+    const v = utools.dbStorage.getItem("textsend.clientPin");
+    const s = v == null ? "" : String(v).trim();
+    return /^\d{8}$/.test(s) ? s : "";
+};
+
+window.trySaveClientConnection = function (raw) {
+    if (!utools.dbStorage.getItem("textsend.rememberClientConnection")) {
+        return;
+    }
+    try {
+        const uri = TsUri.parse(String(raw || "").trim());
+        if (!uri.pinMode) {
+            return;
+        }
+        utools.dbStorage.setItem("textsend.clientHost", uri.host);
+        utools.dbStorage.setItem("textsend.clientPort", uri.port);
+        utools.dbStorage.setItem("textsend.clientPin", uri.k);
+    } catch (e) {
+        /* ignore bad uri */
+    }
+};
+
+window.formatSavedClientRaw = function () {
+    const host = window.getClientHost();
+    const pin = window.getClientPin();
+    if (!host || !pin) {
+        return "";
+    }
+    try {
+        return TsUri.format(host, window.getClientPort(), pin);
+    } catch (e) {
+        return "";
+    }
 };
 
 window.pickAndAddFiles = async function () {

@@ -65,5 +65,24 @@ export const useQrStore = defineStore('Qr', {
             }, 200);
             return true;
         },
+        /** 复制长密钥连接串到剪贴板 */
+        copyPskUri(ip, port, showMsg = true) {
+            const psk = window.getPskB64 && window.getPskB64();
+            if (psk) {
+                this.setPsk(psk);
+            }
+            const pskVal = this.pskB64 || psk;
+            if (!pskVal || !ip) {
+                return false;
+            }
+            const uri = window.formatUri(ip, port, pskVal);
+            if (typeof window.copyText === "function") {
+                window.copyText(uri);
+            }
+            if (showMsg && window.$message) {
+                window.$message.success("已复制密钥连接串");
+            }
+            return true;
+        },
     },
 })

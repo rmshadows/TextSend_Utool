@@ -40,42 +40,87 @@
         </div>
         <!-- 下面div有多大，文本输入框就有多大 -->
         <div class="input-div">
-          <n-input class="input-textarea" @input="inputOnInput" @change="inputOnChange" :value="inputText" type="textarea"
+          <n-input class="input-textarea" :value="inputText" type="textarea"
             :clearable=true :placeholder="placeholder" show-count @update-value="inputOnUpdate" autofocus="true"
             :loading="isLoading" @keydown="onInputKeydown" />
         </div>
       </div>
     </div>
 
-    <div class="buttons">
-      <div class="ip-wrap" :title="ipAddr">
-        <n-select :value="ipAddr" :options="ipAddrList" size="small"
-          :render-option="renderIpOption" :render-label="renderIpLabel"
-          @update:value="selectOnUpdateValue" @update-show="onIpShow" />
+    <div class="control-panel">
+      <div class="control-row control-row--main">
+        <div class="ip-wrap" :title="ipAddr">
+          <n-select :value="ipAddr" :options="ipAddrList" size="small"
+            :render-option="renderIpOption" :render-label="renderIpLabel"
+            @update:value="selectOnUpdateValue" @update-show="onIpShow" />
+        </div>
+        <div class="port-wrap">
+          <n-input-number :value="portNumber" :show-button="false"
+            :validator="portNumberValidator" size="small" :min="1" :max="65535" placeholder="端口"
+            :format="portNumberFormator" @update:value="inputNumberUpdate" />
+        </div>
+        <n-button type="primary" size="small" class="launch-btn"
+          title="左键最多 1 个客户端；右键最多 7 个" @click="btnLaunch" @contextmenu.prevent="btnLaunchContextMenu">
+          {{ launchBtnText }}</n-button>
+        <n-button size="small" @click="btnChangeMode" :disabled="changeModeBtnStat">
+          {{ changeModeBtnText }}</n-button>
       </div>
-      <div class="port-wrap">
-        <n-input-number :value="portNumber" :show-button="false"
-          :validator="portNumberValidator" size="small" :min="1" :max="65535" placeholder="端口"
-          :format="portNumberFormator" @update:value="inputNumberUpdate" />
+      <div class="control-row control-row--secondary">
+        <div v-if="mbStore.serverMode" class="control-row-left">
+          <n-checkbox class="auto-start-chk" size="small"
+            :checked="autoStartServer" title="打开插件后自动启动服务端（不额外弹窗）"
+            @update:checked="onAutoStartChange">启动即开服</n-checkbox>
+          <n-checkbox class="custom-pin-chk" size="small" :checked="customPinEnabled"
+            title="开启后每次启动服务端使用同一 8 位 PIN（默认关）"
+            @update:checked="onCustomPinEnabledChange">固定 PIN</n-checkbox>
+          <n-input v-model:value="customPinDraft" class="custom-pin-input" size="small" maxlength="8"
+            placeholder="8位数字" title="先输入 8 位数字，再勾选「固定 PIN」"
+            :allow-input="onlyPinDigits" @blur="onCustomPinBlur" />
+        </div>
+        <div v-else class="control-row-left">
+          <n-checkbox class="remember-client-chk" size="small" :checked="rememberClientConnection"
+            title="下次进入客户端模式自动填入上次成功的 IP、端口和 PIN（默认关，不记长密钥）"
+            @update:checked="onRememberClientChange">记住上次连接</n-checkbox>
+        </div>
+        <div class="control-row-nav">
+          <n-button size="small" @click="btnHelp">帮助</n-button>
+          <n-button size="small" @click="btnAbout">关于</n-button>
+        </div>
       </div>
-      <n-button size="small" title="左键最多 1 个客户端；右键最多 7 个" @click="btnLaunch" @contextmenu.prevent="btnLaunchContextMenu">
-        {{ launchBtnText }}</n-button>
-      <n-button size="small" @click="btnChangeMode" :disabled="changeModeBtnStat">
-        {{ changeModeBtnText }}</n-button>
-      <n-button size="small" @click="btnHelp">帮助</n-button>
-      <n-button size="small" @click="btnAbout">关于</n-button>
       <n-modal v-model:show="showHelp">
         <n-card class="help-card" title="帮助" :bordered="false" size="small" role="dialog" aria-modal="true">
           <pre class="help-text">{{ helpText }}</pre>
         </n-card>
       </n-modal>
-      <n-modal v-model:show="showModal">
-        <n-card style="width: 420px" title="About" :bordered="false" size="small" role="dialog" aria-modal="true">
-          名称：{{ mbStore.appName }}
-          <br>
-          作者：{{ mbStore.author }}
-          <br>
-          版本：{{ mbStore.version }}
+      <n-modal v-model:show="showModal" class="about-modal" :auto-focus="false">
+        <n-card class="about-card" title="关于" :bordered="false" size="small" role="dialog" aria-modal="true">
+          <div class="about-line">名称：{{ mbStore.appName }}</div>
+          <div class="about-line">作者：{{ mbStore.author }}</div>
+          <div class="about-line">版本：{{ mbStore.version }}</div>
+          <div class="about-download">
+            <div class="about-download-title">Android 客户端下载</div>
+            <div class="about-download-links">
+              <div class="about-link-wrap"
+                @mouseenter="onDownloadHover('github')" @mouseleave="onDownloadLeave">
+                <button type="button" class="about-link" @click="openAndroidGithub">GitHub</button>
+                <div v-if="hoverDownloadQr === 'github'" class="about-qr-pop">
+                  <img v-if="downloadQrSrc.github" class="about-qr-img" :src="downloadQrSrc.github" alt="GitHub 下载" width="80" height="80" />
+                  <span v-else class="about-qr-hint">加载中…</span>
+                  <span v-if="downloadQrSrc.github" class="about-qr-hint">扫码下载</span>
+                </div>
+              </div>
+              <div class="about-link-wrap"
+                @mouseenter="onDownloadHover('gitee')" @mouseleave="onDownloadLeave">
+                <button type="button" class="about-link" @click="openAndroidGitee">Gitee</button>
+                <div v-if="hoverDownloadQr === 'gitee'" class="about-qr-pop">
+                  <img v-if="downloadQrSrc.gitee" class="about-qr-img" :src="downloadQrSrc.gitee" alt="Gitee 下载" width="80" height="80" />
+                  <span v-else class="about-qr-hint">加载中…</span>
+                  <span v-if="downloadQrSrc.gitee" class="about-qr-hint">扫码下载</span>
+                </div>
+              </div>
+            </div>
+            <div class="about-download-note">悬停看二维码 · 点击用浏览器打开</div>
+          </div>
         </n-card>
       </n-modal>
       <n-modal v-model:show="showPasteBig">
@@ -89,13 +134,15 @@
 </template>
 
 <script setup>
-import { NInput, NButton, NSelect, NInputNumber, NCard, NModal, NProgress } from "naive-ui";
+import { NInput, NButton, NSelect, NInputNumber, NCard, NModal, NProgress, NCheckbox } from "naive-ui";
 import { ref, watch, computed, onMounted, onUnmounted, h } from "vue"
 import { useTextsendStore } from '../stores/textsendStore'
 import { useMainbodyStore } from '../stores/mainbodyStore'
 import { useQrStore } from '../stores/qrStore'
 import { useMessage } from 'naive-ui'
 import * as js from "../js/tsc"
+import * as settings from "../js/settings"
+import { ANDROID_DOWNLOAD, openExternalUrl, ensureLinkQrImg } from "../js/links"
 
 
 // 可以在组件中的任意位置访问 `store` 变量 ✨
@@ -118,30 +165,13 @@ try {
   };
 }
 
-// 错误弹窗(写在js文件了)
-// const errorMessage = (error) => {
-//   message.error(
-//     error,
-//     {
-//       closable: true,
-//       duration: 5000
-//     }
-//   )
-// }
+// 错误弹窗见 tsc.js errorHandler
 
 // 定义函数
 // 文本框
 // 更新文本框
 const inputOnUpdate = (value) => {
   tsStore.setInputTextValue(value);
-}
-// 先Update后OnInput最后onChange
-const inputOnInput = (value) => {
-
-}
-// change是最后调用的
-const inputOnChange = (value) => {
-
 }
 
 // 选择框
@@ -162,17 +192,14 @@ const onIpShow = (show) => {
   }
 }
 /**
- * 当选择IP内容变动
-value: "192.168.30.126"
-option: {"label":"192.168.30.126","value":"192.168.30.126"}
- * @param {*} value 
- * @param {*} option 
+ * 当选择 IP 变动
  */
 const selectOnUpdateValue = (value, option) => {
   if (!value || value === tsStore.ipAddr) {
     return;
   }
   tsStore.setIpAddrValue(value);
+  settings.setSavedListenIp(value);
 }
 
 // 端口数字输入
@@ -182,14 +209,10 @@ const selectOnUpdateValue = (value, option) => {
  * 返回String ！
  */
 const portNumberFormator = (value) => {
-  let ts = String(value);
   if ((value % 1) != 0) {
-    // 返回字符串会警告
-    // return parseInt(value);
-    console.log("格式化数字 =>" + parseInt(value));
-    ts = String(parseInt(value));
+    return String(parseInt(value));
   }
-  return ts;
+  return String(value);
 }
 /**
  * 验证端口号是否合规 （要求大于0） 
@@ -202,7 +225,55 @@ const portNumberValidator = (x) => x > 0;
  */
 const inputNumberUpdate = (value) => {
   tsStore.setPortNumberValue(value);
+  settings.setSavedListenPort(value);
 }
+
+const autoStartServer = ref(settings.getAutoStartServer());
+let autoStartLaunched = false;
+
+const onAutoStartChange = (checked) => {
+  autoStartServer.value = !!checked;
+  settings.setAutoStartServer(checked);
+}
+
+const customPinEnabled = ref(settings.getCustomPinEnabled());
+const customPinDraft = ref(settings.getCustomPin());
+const rememberClientConnection = ref(settings.getRememberClientConnection());
+
+const onRememberClientChange = (checked) => {
+  rememberClientConnection.value = !!checked;
+  settings.setRememberClientConnection(checked);
+};
+
+const prefillClientConnection = () => {
+  if (mbStore.serverMode || mbStore.isConnected) {
+    return;
+  }
+  settings.prefillClientConnectionIfNeeded((raw) => tsStore.setInputValueSync(raw));
+};
+
+const onlyPinDigits = (value) => !value || /^\d*$/.test(value);
+
+const onCustomPinEnabledChange = (checked) => {
+  if (checked && !settings.isValidPin(customPinDraft.value)) {
+    window.$message && window.$message.error("请先输入 8 位数字，再勾选固定 PIN");
+    customPinEnabled.value = false;
+    return;
+  }
+  customPinEnabled.value = !!checked;
+  settings.setCustomPinEnabled(checked);
+};
+
+const onCustomPinBlur = () => {
+  const pin = String(customPinDraft.value || "").trim();
+  if (pin && !settings.isValidPin(pin)) {
+    window.$message && window.$message.error("PIN 须为 8 位数字");
+    customPinDraft.value = settings.getCustomPin();
+    return;
+  }
+  customPinDraft.value = pin;
+  settings.setCustomPin(pin);
+};
 /**
  * 启动按钮事件
  * @param {*} oneClient 仅允许一个客户端连接
@@ -296,12 +367,51 @@ const btnChangeMode = () => {
   } else if (mbStore.isConnected) {
     sendSmart();
   } else {
+    const toClient = mbStore.serverMode;
     mbStore.changeServerMode();
+    if (toClient) {
+      prefillClientConnection();
+    } else {
+      tsStore.setInputValueSync("");
+    }
   }
 }
 const btnAbout = () => {
   showModal.value = true;
+  preloadDownloadQrs();
 }
+const openAndroidGithub = () => openExternalUrl(ANDROID_DOWNLOAD.github);
+const openAndroidGitee = () => openExternalUrl(ANDROID_DOWNLOAD.gitee);
+
+const hoverDownloadQr = ref(null);
+const downloadQrSrc = ref({ github: "", gitee: "" });
+
+const ensureDownloadQr = (key) => {
+  const url = ANDROID_DOWNLOAD[key];
+  if (!url || downloadQrSrc.value[key]) {
+    return;
+  }
+  ensureLinkQrImg(url, (src) => {
+    if (src && !downloadQrSrc.value[key]) {
+      downloadQrSrc.value = { ...downloadQrSrc.value, [key]: src };
+    }
+  });
+};
+
+const preloadDownloadQrs = () => {
+  ensureDownloadQr("github");
+  ensureDownloadQr("gitee");
+};
+
+const onDownloadHover = (key) => {
+  hoverDownloadQr.value = key;
+  ensureDownloadQr(key);
+};
+
+const onDownloadLeave = () => {
+  hoverDownloadQr.value = null;
+};
+
 const btnHelp = () => {
   showHelp.value = true;
 }
@@ -530,6 +640,10 @@ const onDrop = (e) => {
 onMounted(() => {
   pollFile();
   fileTimer = setInterval(pollFile, 250);
+  if (!autoStartLaunched && mbStore.serverMode && autoStartServer.value && !mbStore.isServerStart) {
+    autoStartLaunched = true;
+    mbStore.serverStart(tsStore.portNumber, 1);
+  }
 });
 onUnmounted(() => {
   if (fileTimer) {
@@ -568,14 +682,17 @@ const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.vers
 
 —— 连上 ——
 · 选好本机局域网 IP 和端口，点「启动」。左侧出现二维码和 PIN。
+· 可勾选「启动即开服」：下次打开插件自动开服（默认关）。会记住上次选的 IP，换网后不在列表则自动重选。
+· 可勾选「固定 PIN」并输入 8 位数字：每次启动服务端用同一 PIN（默认关，随机 PIN + 长密钥）。
+· 左侧二维码：点击复制长密钥连接串；启动服务时也会自动复制。
 · 对面用手机 / PC 扫码，或手输 8 位 PIN。
 · 点开 IP 框只是换网卡，不会停服务。真的换了 IP，码会自己更新。
 · 点「切换」到客户端：在输入框粘贴 ts://IP/kPIN（端口可省略，默认 54300），再点「连接」。
+· 客户端可勾选「记住上次连接」：PIN 连成功后记住 IP、端口和 PIN（默认关，不记长密钥）。
 
 —— 左键 / 右键不一样 ——
 · 「启动」左键：只允许 1 个客户端。右键：最多 7 个。
 · 「文件」左键：选扁文件（最多 50）。右键：选文件夹。Shift+左键也是文件夹。
-· 二维码：左键复制长密钥连接串。
 · PIN：左键复制 ts://…/kPIN；右键只复制 8 位数字。
 
 —— 文字 / 文件 ——
@@ -586,7 +703,10 @@ const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.vers
 · 本机收到的图 ≤20MB 进剪贴板；手机发来的图一律落地。
 · 「取消」只停这一轮，待发列表还在。发送方取消对面留半截可续传；接收方取消才删半截。
 
-连不上时：两边同一 Wi‑Fi，关加速 / 双通道；电脑有线和 USB 网卡别挂同一网段。`;
+连不上时：两边同一 Wi‑Fi，关加速 / 双通道；电脑有线和 USB 网卡别挂同一网段。
+
+—— 其他端 ——
+· Android APK：点「关于」→ 悬停 GitHub / Gitee 看二维码，点击用浏览器打开。`;
 // 文本框默认字
 let placeholder = computed(() => tsStore.getInputTextPlaceholder);
 let launchBtnText = computed(() => tsStore.getLaunchBtnText);
@@ -594,23 +714,14 @@ let changeModeBtnText = computed(() => tsStore.getChangeModeBtnText);
 // 按钮状态
 let changeModeBtnStat = computed(() => mbStore.getDisableChangeModeBtn);
 
-
-
-
-// IPC通信，未使用
-// window.ping((event, value) => {
-//   console.log("event" + "IPC Renderer: 接受Ping -> " + value);
-// });
-
 // 初始化（preload 未就绪时不要拖垮整块 UI）
 try {
   updateIpAddrList();
-  tsStore.setIpAddrValue(js.getDefaultIpAddr(tsStore.ipAddrList));
+  tsStore.setPortNumberValue(settings.getSavedListenPort());
+  tsStore.setIpAddrValue(settings.resolveListenIp(tsStore.ipAddrList));
 } catch (e) {
   console.error("Init IP list failed:", e);
 }
-// 测试utools API
-// window.showPath();
 </script>
 
 
@@ -750,15 +861,47 @@ try {
   }
 }
 
-.buttons {
+.control-panel {
   width: 100%;
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   padding: 0 8px 6px;
   box-sizing: border-box;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.control-row--secondary {
+  justify-content: flex-end;
+}
+
+.control-row-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.control-row-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.launch-btn {
+  flex: 0 0 auto;
 }
 
 .ip-wrap {
@@ -785,7 +928,40 @@ try {
   }
 }
 
-.buttons :deep(.n-button) {
+.auto-start-chk {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.remember-client-chk {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.custom-pin-chk {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.custom-pin-input {
+  flex: 1 1 108px;
+  min-width: 108px;
+  max-width: 160px;
+
+  :deep(.n-input) {
+    width: 100%;
+  }
+
+  :deep(.n-input__input-el) {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+  }
+}
+
+.control-row :deep(.n-button) {
   flex: 0 0 auto;
 }
 
@@ -799,6 +975,109 @@ try {
   font-family: inherit;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.about-modal :deep(.n-card) {
+  width: max-content;
+  max-width: min(300px, 92vw);
+}
+
+.about-modal :deep(.n-card__content) {
+  padding-top: 4px;
+}
+
+.about-card {
+  width: max-content;
+}
+
+.about-line {
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: nowrap;
+}
+
+.about-download {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ts-line);
+}
+
+.about-download-title {
+  font-size: 12px;
+  color: var(--ts-muted);
+  margin-bottom: 8px;
+}
+
+.about-download-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ts-muted);
+}
+
+.about-download-links {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.about-link-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.about-link {
+  display: inline-block;
+  border: 1px solid var(--ts-line);
+  background: var(--ts-chip);
+  color: var(--ts-accent);
+  border-radius: 6px;
+  padding: 5px 16px;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.about-link:hover {
+  border-color: var(--ts-accent);
+}
+
+.about-qr-pop {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  z-index: 20;
+  width: 96px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--ts-line);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.about-qr-img {
+  display: block;
+  width: 80px !important;
+  height: 80px !important;
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.about-qr-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--ts-muted);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .paste-preview {
