@@ -3,10 +3,10 @@
   "version": "5.0.11",
   "private": true,
   "scripts": {
-    "start": "vite",
-    "dev": "vite",
-    "build": "vite build && cp -f logo.png dist/assets/favicon.png",
-    "preview": "vite preview",
+    "start": "node ./node_modules/vite/bin/vite.js",
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "build": "node ./node_modules/vite/bin/vite.js build && cp -f logo.png dist/assets/favicon.png",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
     "udev": "./buildVueforuTools.sh",
     "pack": "./pack-release.sh"
   },
