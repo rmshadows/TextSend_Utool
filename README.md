@@ -2,15 +2,18 @@
 
 本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.11
 
+## 传送门
+
+- **Desktop**：[GitHub](https://github.com/rmshadows/TextSend_Desktop) · [Gitee](https://gitee.com/rmshadows/TextSend_Desktop)
+- **Android**：[GitHub](https://github.com/rmshadows/TextSend_Android) · [Gitee](https://gitee.com/rmshadows/TextSend_Android)
+- **uTools**：[GitHub](https://github.com/rmshadows/TextSend_Utool)
+- **iOS / 网页桥（Web）**：[GitHub](https://github.com/rmshadows/Textsend_ios)（计划中；手机用浏览器扫电脑网页桥，非原生 App）
+
+演示视频：[Bilibili](https://www.bilibili.com/video/BV1j3411q7gQ/)
+
 ## 支持的平台
 
-Windows / Linux ：
-
-[Java Swing](https://github.com/rmshadows/TextSend_Desktop) | [uTools Plugin](https://github.com/rmshadows/TextSend_Utool)
-
-安卓：
-
-[Android](https://github.com/rmshadows/TextSend_Android)      | [演示视频](https://www.bilibili.com/video/BV1j3411q7gQ/)
+Windows / Linux（本插件）。跨端互传见上方传送门。
 
 ## 起因
 
