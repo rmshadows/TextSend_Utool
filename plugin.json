@@ -1,5 +1,5 @@
 {
-  "version": "5.0.11",
+  "version": "5.0.13",
   "pluginName": "Textsend-uTools",
   "description": "局域网文字与文件投送",
   "author": "Ryan Yim",
@@ -15,12 +15,19 @@
     {
       "code": "textsend",
       "explain": "局域网文字与文件投送",
-      "cmds": [ 
+      "cmds": [
         "Textsend",
         "TextSend",
         "Textsend-uTools",
         "文字传输",
-        "ts"
+        "ts",
+        {
+          "type": "regex",
+          "label": "用 TextSend 连接",
+          "match": "/(?:^|\\s)(?:ts:\\/\\/)?(?:\\[[^\\]]+\\]|[A-Za-z0-9._-]+)(?::\\d{1,5})?\\/k\\S+/i",
+          "minLength": 10,
+          "maxLength": 512
+        }
       ],
       "icon": "logo.png"
     }

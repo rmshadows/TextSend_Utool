@@ -30,7 +30,10 @@ class TsPeer {
         this.socket = socket;
         this.asServer = !!opts.asServer;
         this.material = opts.material || null;
+        this.server = opts.server || null;
         this.uri = opts.uri || null;
+        this.pendingGrantPsk = null;
+        this.pendingGrantHost = null;
         this.onReady = opts.onReady || null;
         this.onClosed = opts.onClosed || null;
         this.onText = opts.onText || null;
@@ -197,11 +200,28 @@ class TsPeer {
             const info = C.HKDF_INFO_PIN_PREFIX + this.material.pin;
             this.aesKey = Hkdf.derive(shared, salt, info, C.PSK_LEN);
         } else if (mode === "psk") {
+            let remoteHost = "";
+            try {
+                remoteHost = String(this.socket.remoteAddress || "");
+                if (remoteHost.toLowerCase().startsWith("::ffff:")) {
+                    remoteHost = remoteHost.slice(7);
+                }
+            } catch (_e) {
+            }
+            const grantPsk = this.server && typeof this.server.peekGrant === "function"
+                ? this.server.peekGrant(remoteHost)
+                : null;
+            const psk = grantPsk || this.material.psk;
+            this._log("【握手】PSK 模式：" + (grantPsk ? "局域网临时授权" : "扫码长密钥"));
             serverKx.nonce = B64.enc(serverNonce);
             this._writePlain(C.TYPE_KEY_EXCHANGE, serverKx);
             const clientNonce = B64.dec(clientKx.nonce);
             const salt = Buffer.concat([serverNonce, clientNonce]);
-            this.aesKey = Hkdf.derive(this.material.psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
+            this.aesKey = Hkdf.derive(psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
+            if (grantPsk) {
+                this.pendingGrantPsk = grantPsk;
+                this.pendingGrantHost = remoteHost;
+            }
         } else {
             throw new Error("unsupported mode: " + mode);
         }
@@ -210,6 +230,11 @@ class TsPeer {
         const clientAuth = JSON.parse(AesGcm.open(this.aesKey, auth.payload).toString("utf8"));
         if (clientAuth.role !== "client") {
             throw new Error("bad AUTH_OK role");
+        }
+        if (this.pendingGrantHost && this.pendingGrantPsk && this.server) {
+            this.server.consumeGrant(this.pendingGrantHost, this.pendingGrantPsk);
+            this.pendingGrantHost = null;
+            this.pendingGrantPsk = null;
         }
 
         this.sessionId = crypto.randomBytes(8).toString("hex");

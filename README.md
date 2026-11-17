@@ -1,6 +1,6 @@
 # TextSend_Utools_Plugin
 
-本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.11
+本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.13
 
 ## 传送门
 
@@ -128,17 +128,29 @@ npm run dev
 - 对端 HELLO 没有 `"file"` 会立刻失败（旧 uTools 5.0.7）。
 - 修改 `tspreload.js` 或 `src/nodejs/` 或 `ui/` 后须重新载入插件；构建用 `npm run udev` 或 `npm run build`（会自动拷 `logo.png` → `dist/assets/favicon.png`）。
 
-## 维护说明（5.0.11）
+## 维护说明（5.0.13）
 
 - **发文件**：2026-08-24 修稳（`writeFrameWait` 回压；取消 `cancelEpoch` + `_sendControlWait`）。
 - **二维码**：监听成功后再刷；开服成功自动复制长密钥连接串；点侧栏二维码复制长 key（不再弹放大窗）。
 - **About**：Android 下载 GitHub/Gitee 悬停小码（打开关于时预生成）。
 - **客户端**：可选「记住上次连接」（仅 PIN，默认关）；切回服务端清空连接串输入框。
-- **配置**：`src/js/settings.js` + `tspreload.js`（`dbStorage`）；改 preload 或 nodejs 后须重载插件。
+- **局域网**：探测 / TSA1 授权 / 待授权与已连接列表 / 设置（限流·冷却·黑名单）；改 `tspreload.js`、`src/nodejs/` 或 `ui/` 后须重载插件。
+- **配置**：`src/js/settings.js` + `tspreload.js`（`dbStorage`）。
 
 # 更新日志
 
 5.0.0 起为协议 v1（二进制帧 / AES-GCM / `ts://`），与旧 0.0.x JSON 协议不互通。
+
+- 2026.11.17——5.0.13
+  - uTools 主搜索框粘贴 `ts://…`（或 `IP:端口/k…`）出现「用 TextSend 连接」，进入后自动切客户端并连接
+  - 设置保存后立刻生效：开/关探测、暂停、端口、限流/冷却/黑名单；已开服可热更新人数上限
+  - 「已连接」显示设备名（授权请求带来的名；本机连本机无授权名时回填主机名）；不再用临时 TCP 口当主文案
+  - 悬停提示补全；修 preload 启动即崩（授权配置过早初始化）
+
+- 2026.11.17——5.0.12
+  - 对齐 PC：局域网临时授权 TSA1；「待授权」允许/拒绝/拉黑；设置含探测与限流/冷却/黑名单
+  - 「已连接」可踢下线；右键启动上限可配（默认 7，1–64）
+  - 客户端点探测设备请求授权（免输 PIN，须对方允许）
 
 - 2026.8.26——5.0.11
   - **客户端**：「记住上次连接」（默认关，仅 PIN；`textsend.rememberClientConnection` + host/port/pin）

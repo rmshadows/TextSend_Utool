@@ -5,8 +5,52 @@ const client = require("./src/nodejs/client");
 const profile = require("./src/nodejs/profile");
 const fileQueue = require("./src/nodejs/fileQueue");
 const TsUri = require("./src/nodejs/protocol/tsUri");
+const lanDiscover = require("./src/nodejs/protocol/lanDiscover");
+const lanAuthGate = require("./src/nodejs/protocol/lanAuthGate");
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
+
+/** dbStorage 布尔：用 1 / 删除，避免 false 读出来异常 */
+function storageFlagGet(key) {
+    const v = utools.dbStorage.getItem(key);
+    return v === true || v === 1 || v === "1" || v === "true";
+}
+
+function storageFlagSet(key, on) {
+    if (on) {
+        utools.dbStorage.setItem(key, 1);
+    } else {
+        utools.dbStorage.removeItem(key);
+    }
+}
+
+function readAuthBlacklist() {
+    const raw = utools.dbStorage.getItem("textsend.authBlacklist");
+    if (raw == null || raw === "") {
+        return [];
+    }
+    return String(raw).split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
+function writeAuthBlacklist(list) {
+    const uniq = [...new Set((list || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))];
+    utools.dbStorage.setItem("textsend.authBlacklist", uniq.join(","));
+    return uniq;
+}
+
+function syncAuthGateConfig() {
+    const rate = Number(utools.dbStorage.getItem("textsend.authRatePerMin"));
+    const coolRaw = utools.dbStorage.getItem("textsend.authCooldownSec");
+    const cool = coolRaw == null ? 120 : Number(coolRaw);
+    lanAuthGate.setConfig({
+        ratePerMin: Number.isFinite(rate) && rate >= 1 && rate <= 60 ? rate : 3,
+        cooldownSec: Number.isFinite(cool) && cool >= 0 && cool <= 86400 ? cool : 120,
+        blacklist: readAuthBlacklist(),
+    });
+}
+
+lanAuthGate.boot();
 
 window.getIpAddr = function () {
     return msystem.getIpAddr();
@@ -19,6 +63,7 @@ window.startServer = function (port, maxConnections = 1) {
 };
 
 window.stopServer = function () {
+    lanAuthGate.clearPending(true);
     server.closeAllServers();
 };
 
@@ -118,11 +163,11 @@ window.setUiZoom = function (n) {
 };
 
 window.getAutoStartServer = function () {
-    return !!utools.dbStorage.getItem("textsend.autoStartServer");
+    return storageFlagGet("textsend.autoStartServer");
 };
 
 window.setAutoStartServer = function (v) {
-    utools.dbStorage.setItem("textsend.autoStartServer", !!v);
+    storageFlagSet("textsend.autoStartServer", !!v);
 };
 
 window.getListenIp = function () {
@@ -172,6 +217,195 @@ window.setCustomPin = function (pin) {
     }
     utools.dbStorage.setItem("textsend.customPin", s);
     return true;
+};
+
+window.getLanDiscover = function () {
+    return storageFlagGet("textsend.lanDiscover");
+};
+
+window.setLanDiscover = function (v) {
+    storageFlagSet("textsend.lanDiscover", !!v);
+    // 关掉时立刻停 UDP，不等下一次 sync
+    if (!v) {
+        lanDiscover.stop();
+        lanAuthGate.clearPending(true);
+    }
+};
+
+window.getLanDiscoverPause = function () {
+    return storageFlagGet("textsend.lanDiscoverPause");
+};
+
+window.setLanDiscoverPause = function (v) {
+    storageFlagSet("textsend.lanDiscoverPause", !!v);
+};
+
+window.getLanDiscoverPort = function () {
+    const v = utools.dbStorage.getItem("textsend.lanDiscoverPort");
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 1 && n <= 65535) {
+        return n === 54301 ? 54300 : n;
+    }
+    return 54300;
+};
+
+window.setLanDiscoverPort = function (port) {
+    const n = Number(port);
+    if (!Number.isFinite(n) || n < 1 || n > 65535) {
+        return false;
+    }
+    utools.dbStorage.setItem("textsend.lanDiscoverPort", n);
+    return true;
+};
+
+window.stopLanDiscover = function () {
+    lanDiscover.stop();
+};
+
+window.syncLanDiscover = function (live) {
+    const connected = !!(live && (live.connected || live.connectedCount > 0));
+    const advertisePort = Number(live && live.advertisePort) || 0;
+    syncAuthGateConfig();
+    const enabled = window.getLanDiscover();
+    if (!enabled) {
+        lanDiscover.stop();
+        return {
+            paused: false,
+            peers: [],
+            bindError: "",
+            udpPort: window.getLanDiscoverPort(),
+        };
+    }
+    return lanDiscover.sync({
+        enabled: true,
+        pauseWhenConnected: window.getLanDiscoverPause(),
+        connected,
+        advertisePort,
+        udpPort: window.getLanDiscoverPort(),
+        name: os.hostname() || "PC",
+    });
+};
+
+/** 设置保存后立刻套用探测 / 授权门控；可选热更新当前服务端人数上限 */
+window.applyLanSettingsNow = function (live) {
+    syncAuthGateConfig();
+    const snap = window.syncLanDiscover(live || {});
+    const maxN = window.getMaxClients();
+    const s = profile.currentServer;
+    if (s && s.running && Number.isFinite(maxN) && maxN >= 1) {
+        s.maxConnections = maxN;
+    }
+    return snap;
+};
+
+window.getMaxClients = function () {
+    const n = Number(utools.dbStorage.getItem("textsend.maxClients"));
+    return Number.isFinite(n) && n >= 1 && n <= 64 ? n : 7;
+};
+
+window.setMaxClients = function (n) {
+    const v = Number(n);
+    if (!Number.isFinite(v) || v < 1 || v > 64) {
+        return false;
+    }
+    utools.dbStorage.setItem("textsend.maxClients", v);
+    return true;
+};
+
+window.getAuthRatePerMin = function () {
+    const n = Number(utools.dbStorage.getItem("textsend.authRatePerMin"));
+    return Number.isFinite(n) && n >= 1 && n <= 60 ? n : 3;
+};
+
+window.setAuthRatePerMin = function (n) {
+    const v = Number(n);
+    if (!Number.isFinite(v) || v < 1 || v > 60) {
+        return false;
+    }
+    utools.dbStorage.setItem("textsend.authRatePerMin", v);
+    syncAuthGateConfig();
+    return true;
+};
+
+window.getAuthCooldownSec = function () {
+    const n = Number(utools.dbStorage.getItem("textsend.authCooldownSec"));
+    if (n === 0) {
+        return 0;
+    }
+    return Number.isFinite(n) && n >= 0 && n <= 86400 ? n : 120;
+};
+
+window.setAuthCooldownSec = function (n) {
+    const v = Number(n);
+    if (!Number.isFinite(v) || v < 0 || v > 86400) {
+        return false;
+    }
+    utools.dbStorage.setItem("textsend.authCooldownSec", v);
+    syncAuthGateConfig();
+    return true;
+};
+
+window.getAuthBlacklistText = function () {
+    return readAuthBlacklist().join("\n");
+};
+
+window.setAuthBlacklistText = function (text) {
+    const list = String(text || "").split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    writeAuthBlacklist(list);
+    syncAuthGateConfig();
+};
+
+syncAuthGateConfig();
+
+window.listLanAuthPending = function () {
+    if (!window.getLanDiscover() || !profile.currentServer) {
+        lanAuthGate.clearPending(true);
+        return [];
+    }
+    return lanAuthGate.listPending();
+};
+
+window.decideLanAuth = function (host, action) {
+    const r = lanAuthGate.decide(host, action);
+    if (r && r.action === "blacklist" && Array.isArray(r.blacklist)) {
+        writeAuthBlacklist(r.blacklist);
+        syncAuthGateConfig();
+    }
+    return r;
+};
+
+window.denyAllLanAuth = function () {
+    return lanAuthGate.denyAll();
+};
+
+window.listAliveClients = function () {
+    const s = profile.currentServer;
+    return s && typeof s.listAliveClients === "function" ? s.listAliveClients() : [];
+};
+
+window.kickClientHost = function (host) {
+    const s = profile.currentServer;
+    return !!(s && s.kickHost(host));
+};
+
+window.kickAllClients = function () {
+    const s = profile.currentServer;
+    if (!s) {
+        return 0;
+    }
+    let n = 0;
+    for (const c of s.listAliveClients()) {
+        if (s.kickHost(c.host)) {
+            n++;
+        }
+    }
+    return n;
+};
+
+/** 客户端点设备：走 TSA1 授权，返回连接串或抛错信息对象 */
+window.requestLanAuthConnect = async function (host, udpPort) {
+    const grant = await lanDiscover.requestAuth(host, udpPort || window.getLanDiscoverPort());
+    return TsUri.format(String(host || ""), grant.tcpPort, grant.pskB64);
 };
 
 window.getRememberClientConnection = function () {
@@ -364,3 +598,77 @@ window.readImageDataUrl = function (filePath) {
 window.sendPasteImage = function (filePath) {
     return fileQueue.sendOnePath(filePath);
 };
+
+/** uTools 搜索框粘贴 ts:// 后进入插件时暂存，供 UI 自动连接 */
+let pendingTsUri = "";
+
+function extractTsUri(text) {
+    const raw = String(text || "").trim();
+    if (!raw) {
+        return "";
+    }
+    const candidates = [];
+    const first = raw.split(/\r?\n/, 1)[0].trim();
+    candidates.push(first);
+    const embedded = raw.match(/ts:\/\/\S+/i);
+    if (embedded) {
+        candidates.push(embedded[0].replace(/[ sp]+$/i, "").replace(/[),.;]+$/, ""));
+    }
+    const bare = raw.match(/(?:^|\s)((?:\[[^\]]+\]|[A-Za-z0-9._-]+)(?::\d{1,5})?\/k\S+)/);
+    if (bare) {
+        candidates.push(bare[1]);
+    }
+    for (const c of candidates) {
+        let s = String(c || "").trim();
+        if (!s) {
+            continue;
+        }
+        if (!/^ts:\/\//i.test(s)) {
+            s = "ts://" + s.replace(/^ts:\/\//i, "");
+        }
+        try {
+            TsUri.parse(s);
+            return s;
+        } catch (_e) {
+            /* try next */
+        }
+    }
+    return "";
+}
+
+function notifyPendingTsUri(uri) {
+    try {
+        if (typeof window.dispatchEvent === "function") {
+            window.dispatchEvent(new CustomEvent("textsend-pending-uri", { detail: uri }));
+        }
+    } catch (_e) {
+    }
+}
+
+window.consumePendingTsUri = function () {
+    const u = pendingTsUri;
+    pendingTsUri = "";
+    return u;
+};
+
+window.peekPendingTsUri = function () {
+    return pendingTsUri;
+};
+
+if (typeof utools !== "undefined" && typeof utools.onPluginEnter === "function") {
+    utools.onPluginEnter(({ type, payload }) => {
+        if (type !== "regex" && type !== "over" && type !== "text") {
+            return;
+        }
+        // text 指令进入时 payload 是指令名，不是连接串
+        if (type === "text") {
+            return;
+        }
+        const uri = extractTsUri(payload);
+        if (!uri) {
+            return;
+        }
+        pendingTsUri = uri;
+        notifyPendingTsUri(uri);
+    });
+}

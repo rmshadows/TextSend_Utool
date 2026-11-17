@@ -10,10 +10,14 @@
   >
     <div class="file-panel">
       <div class="file-toolbar">
-        <n-button size="small" title="左键选文件；右键或 Shift+左键选文件夹" @click="btnPickFiles" @contextmenu.prevent="btnPickFolders">文件</n-button>
-        <n-button size="small" :disabled="!canCancel" @click="btnCancelFile">取消</n-button>
-        <n-button size="small" :disabled="!canClearQueue" title="清空待发列表" @click="btnClearQueue">清空</n-button>
-        <n-button size="small" class="inbox-btn" @click="btnOpenInbox">下载目录</n-button>
+        <n-button size="small" title="左键选文件（最多 50）；右键或 Shift+左键选文件夹"
+          @click="btnPickFiles" @contextmenu.prevent="btnPickFolders">文件</n-button>
+        <n-button size="small" :disabled="!canCancel" title="只停这一轮传输，待发列表还在"
+          @click="btnCancelFile">取消</n-button>
+        <n-button size="small" :disabled="!canClearQueue" title="清空待发列表（不影响正在传的）"
+          @click="btnClearQueue">清空</n-button>
+        <n-button size="small" class="inbox-btn" title="用资源管理器打开本机「下载/TextSend」"
+          @click="btnOpenInbox">下载目录</n-button>
       </div>
       <div v-if="fileStat.progress" class="file-meter">
         <n-progress type="line" :percentage="progressPct" :show-indicator="false" :height="5" :border-radius="99" />
@@ -60,10 +64,20 @@
             :format="portNumberFormator" @update:value="inputNumberUpdate" />
         </div>
         <n-button type="primary" size="small" class="launch-btn"
-          title="左键最多 1 个客户端；右键最多 7 个" @click="btnLaunch" @contextmenu.prevent="btnLaunchContextMenu">
+          :title="mbStore.serverMode
+            ? (mbStore.isServerStart
+              ? '停止服务（已连接客户端会断开）'
+              : ('左键最多 1 人并开服；右键最多 ' + maxClients + ' 人（设置可改）'))
+            : (mbStore.isConnected ? '断开连接' : '连接：输入框须为 ts://…/k…')"
+          @click="btnLaunch" @contextmenu.prevent="btnLaunchContextMenu">
           {{ launchBtnText }}</n-button>
-        <n-button size="small" @click="btnChangeMode" :disabled="changeModeBtnStat">
+        <n-button size="small"
+          title="在服务端 / 客户端之间切换（已连接时不可用）"
+          @click="btnChangeMode" :disabled="changeModeBtnStat">
           {{ changeModeBtnText }}</n-button>
+        <n-button size="small"
+          title="局域网探测、授权限流/冷却/黑名单、右键启动上限等"
+          @click="openSettings">设置</n-button>
       </div>
       <div class="control-row control-row--secondary">
         <div v-if="mbStore.serverMode" class="control-row-left">
@@ -76,17 +90,106 @@
           <n-input v-model:value="customPinDraft" class="custom-pin-input" size="small" maxlength="8"
             placeholder="8位数字" title="先输入 8 位数字，再勾选「固定 PIN」"
             :allow-input="onlyPinDigits" @blur="onCustomPinBlur" />
+          <span v-if="lanDiscover" class="lan-on-hint" title="探测已开；详细选项在「设置」">探测开</span>
         </div>
         <div v-else class="control-row-left">
           <n-checkbox class="remember-client-chk" size="small" :checked="rememberClientConnection"
             title="下次进入客户端模式自动填入上次成功的 IP、端口和 PIN（默认关，不记长密钥）"
             @update:checked="onRememberClientChange">记住上次连接</n-checkbox>
+          <span v-if="lanDiscover" class="lan-on-hint" title="探测已开；详细选项在「设置」">探测开</span>
         </div>
         <div class="control-row-nav">
-          <n-button size="small" @click="btnHelp">帮助</n-button>
-          <n-button size="small" @click="btnAbout">关于</n-button>
+          <n-button size="small" title="快捷键与用法说明" @click="btnHelp">帮助</n-button>
+          <n-button size="small" title="版本与 Android 下载" @click="btnAbout">关于</n-button>
         </div>
       </div>
+      <div v-if="mbStore.serverMode && mbStore.isServerStart && authPending.length" class="lan-peers">
+        <button type="button" class="lan-peer lan-peer--entry"
+          title="打开待授权列表；允许后发一次性密钥。点空白可收起"
+          @click="showAuthPanel = !showAuthPanel">
+          待授权 {{ authPending.length }} {{ showAuthPanel ? "▴" : "▾" }}
+        </button>
+        <div v-if="showAuthPanel" class="auth-panel">
+          <div v-for="p in authPending" :key="p.host" class="auth-row">
+            <span class="auth-name" :title="p.host">{{ p.name }} · {{ p.host }}</span>
+            <span class="auth-actions">
+              <button type="button" class="auth-btn" title="发一次性授权，免输 PIN；可随时踢下线"
+                @click="onAuthDecide(p.host, 'allow')">允许</button>
+              <button type="button" class="auth-btn" title="拒绝并进入冷却（见设置）"
+                @click="onAuthDecide(p.host, 'deny')">拒绝</button>
+              <button type="button" class="auth-btn" title="加入黑名单并拒绝；可在设置里删"
+                @click="onAuthDecide(p.host, 'blacklist')">拉黑</button>
+            </span>
+          </div>
+          <button v-if="authPending.length > 1" type="button" class="auth-btn auth-btn--all"
+            title="拒绝当前全部请求并分别进入冷却"
+            @click="onAuthDenyAll">全部拒绝</button>
+        </div>
+      </div>
+      <div v-if="mbStore.serverMode && mbStore.isServerStart && aliveClients.length" class="lan-peers">
+        <button type="button" class="lan-peer lan-peer--entry"
+          title="打开客户端列表；可踢下线。点空白可收起"
+          @click="showClientsPanel = !showClientsPanel">
+          已连接 {{ aliveClients.length }}{{ mbStore.maxConnections > 1 ? ' / ' + mbStore.maxConnections : '' }}
+          {{ showClientsPanel ? "▴" : "▾" }}
+        </button>
+        <div v-if="showClientsPanel" class="auth-panel">
+          <div v-for="c in aliveClients" :key="c.host + ':' + c.port" class="auth-row">
+            <span class="auth-name"
+              :title="'对端 IP' + (c.name ? ' · 设备名来自授权请求' : '') + '（临时连接口 ' + c.port + '，仅区分同 IP 多开）'">
+              {{ c.label || c.host }}
+            </span>
+            <button type="button" class="auth-btn" :title="'断开 ' + c.host + '，服务继续运行'"
+              @click="onKick(c.host)">踢下线</button>
+          </div>
+          <button v-if="aliveClients.length > 1" type="button" class="auth-btn auth-btn--all"
+            title="断开所有客户端，服务继续运行"
+            @click="onKickAll">全部踢下线</button>
+        </div>
+      </div>
+      <div v-if="!mbStore.serverMode && lanDiscover" class="lan-peers">
+        <span class="lan-peers-label">{{ lanPeerLabel }}</span>
+        <button v-for="p in lanPeers" :key="p.host + ':' + p.tcpPort" type="button" class="lan-peer"
+          :title="lanPeerTitle(p)"
+          @click="applyLanPeer(p)">
+          {{ lanPeerText(p) }}
+        </button>
+      </div>
+      <n-modal v-model:show="showSettings">
+        <n-card class="help-card" title="设置" :bordered="false" size="small" role="dialog" aria-modal="true">
+          <div class="settings-form">
+            <n-checkbox :checked="draftLanDiscover"
+              title="默认关。打开后可被发现，并允许客户端请求临时授权（须本机点允许）。"
+              @update:checked="onDraftLanDiscover">局域网探测</n-checkbox>
+            <n-checkbox :checked="draftLanPause" :disabled="!draftLanDiscover"
+              title="默认关。已有连接时暂停广播和探测。"
+              @update:checked="onDraftLanPause">有连接时关闭探测</n-checkbox>
+            <label class="settings-row" title="和连接同一端口号，默认 54300，协议是 UDP。两端要一致。防火墙若只放了 TCP，还要放行 UDP。">探测端口
+              <n-input-number v-model:value="draftLanPort" :min="1" :max="65535" :show-button="false"
+                size="small" :disabled="!draftLanDiscover" />
+            </label>
+            <label class="settings-row" title="1–64。左键启动仍为 1 人；右键启动用此上限。下次启动生效。">右键启动最多客户端
+              <n-input-number v-model:value="draftMaxClients" :min="1" :max="64" :show-button="false" size="small" />
+            </label>
+            <label class="settings-row" title="同一 IP 每分钟最多几条授权请求；超出静默拒绝。默认 3。">授权限流（次/分·IP）
+              <n-input-number v-model:value="draftAuthRate" :min="1" :max="60" :show-button="false" size="small" />
+            </label>
+            <label class="settings-row" title="点「拒绝」后该 IP 冷却期内静默拒绝。0=不冷却，默认 120。">拒绝后冷却（秒）
+              <n-input-number v-model:value="draftAuthCool" :min="0" :max="86400" :show-button="false" size="small" />
+            </label>
+            <div class="settings-bl">
+              <div class="settings-bl-title" title="名单内 IP 的授权请求一律静默拒绝">授权黑名单（每行一个 IP）</div>
+              <n-input v-model:value="draftBlacklist" type="textarea" :rows="4" placeholder="例如 192.168.1.20"
+                title="也可在待授权列表点「拉黑」写入" />
+            </div>
+            <div class="settings-hint">平时请扫码。打开探测后：客户端点设备会进「待授权」，允许才发一次性密钥。限流/冷却/黑名单防骚扰。</div>
+            <div class="settings-actions">
+              <n-button size="small" @click="showSettings = false">取消</n-button>
+              <n-button type="primary" size="small" @click="saveSettings">保存</n-button>
+            </div>
+          </div>
+        </n-card>
+      </n-modal>
       <n-modal v-model:show="showHelp">
         <n-card class="help-card" title="帮助" :bordered="false" size="small" role="dialog" aria-modal="true">
           <pre class="help-text">{{ helpText }}</pre>
@@ -239,6 +342,277 @@ const onAutoStartChange = (checked) => {
 const customPinEnabled = ref(settings.getCustomPinEnabled());
 const customPinDraft = ref(settings.getCustomPin());
 const rememberClientConnection = ref(settings.getRememberClientConnection());
+const lanDiscover = ref(settings.getLanDiscover());
+const lanPause = ref(settings.getLanDiscoverPause());
+const lanPort = ref(settings.getLanDiscoverPort());
+const lanPeers = ref([]);
+const lanPaused = ref(false);
+const lanBindError = ref("");
+const authPending = ref([]);
+const aliveClients = ref([]);
+const showAuthPanel = ref(false);
+const showClientsPanel = ref(false);
+const showSettings = ref(false);
+const maxClients = ref(settings.getMaxClients());
+const draftLanDiscover = ref(settings.getLanDiscover());
+const draftLanPause = ref(settings.getLanDiscoverPause());
+const draftLanPort = ref(settings.getLanDiscoverPort());
+const draftMaxClients = ref(settings.getMaxClients());
+const draftAuthRate = ref(settings.getAuthRatePerMin());
+const draftAuthCool = ref(settings.getAuthCooldownSec());
+const draftBlacklist = ref(settings.getAuthBlacklistText());
+const lanPeerLabel = computed(() => {
+  if (lanPaused.value) {
+    return "已连接，探测已暂停";
+  }
+  if (lanBindError.value) {
+    return lanBindError.value;
+  }
+  return lanPeers.value.length ? "局域网设备（点一下请求授权）" : "正在探测…还没看到其他 TextSend";
+});
+
+const lanPeerIdCounts = computed(() => {
+  const counts = {};
+  for (const p of lanPeers.value) {
+    const id = p && p.idKey ? String(p.idKey) : "";
+    if (!id) {
+      continue;
+    }
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  return counts;
+});
+
+function lanPeerSameDevice(p) {
+  const id = p && p.idKey ? String(p.idKey) : "";
+  return !!(id && (lanPeerIdCounts.value[id] || 0) > 1);
+}
+
+function lanPeerText(p) {
+  const base = `${p.name ? p.name + "  " : ""}${p.host}:${p.tcpPort}`;
+  return lanPeerSameDevice(p) ? `${base}  （可能是同一设备）` : base;
+}
+
+function lanPeerTitle(p) {
+  if (lanPeerSameDevice(p)) {
+    return "实例号相同，多半是同一进程的多网卡。点一下请求授权";
+  }
+  return "点一下：请求服务端临时授权（免输 PIN）；已有 PIN/密钥则直接连";
+}
+
+const pushLanState = () => {
+  if (typeof window.syncLanDiscover !== "function") {
+    return;
+  }
+  const connected = !!(mbStore.isConnected || mbStore.connectedCount > 0);
+  const advertisePort = mbStore.serverMode && mbStore.isServerStart ? Number(tsStore.portNumber) || 0 : 0;
+  const snap = window.syncLanDiscover({
+    connected,
+    connectedCount: mbStore.connectedCount,
+    advertisePort,
+    udpPort: lanPort.value,
+  });
+  lanPaused.value = !!(snap && snap.paused);
+  lanBindError.value = snap && snap.bindError ? String(snap.bindError) : "";
+  lanPeers.value = snap && Array.isArray(snap.peers) ? snap.peers : [];
+  if (typeof window.listLanAuthPending === "function") {
+    const next = window.listLanAuthPending() || [];
+    if (!authPending.value.length && next.length) {
+      window.$message && window.$message.info("有授权请求，点「待授权」处理");
+    }
+    authPending.value = next;
+    if (!next.length) {
+      showAuthPanel.value = false;
+    }
+  }
+  if (typeof window.listAliveClients === "function" && mbStore.serverMode && mbStore.isServerStart) {
+    aliveClients.value = window.listAliveClients() || [];
+    if (!aliveClients.value.length) {
+      showClientsPanel.value = false;
+    }
+  } else {
+    aliveClients.value = [];
+    showClientsPanel.value = false;
+  }
+};
+
+const onDraftLanDiscover = (checked) => {
+  draftLanDiscover.value = !!checked;
+  if (!checked) {
+    draftLanPause.value = false;
+  }
+};
+
+const onDraftLanPause = (checked) => {
+  draftLanPause.value = !!checked;
+};
+
+const openSettings = () => {
+  draftLanDiscover.value = settings.getLanDiscover();
+  draftLanPause.value = settings.getLanDiscoverPause();
+  draftLanPort.value = settings.getLanDiscoverPort();
+  draftMaxClients.value = settings.getMaxClients();
+  draftAuthRate.value = settings.getAuthRatePerMin();
+  draftAuthCool.value = settings.getAuthCooldownSec();
+  draftBlacklist.value = settings.getAuthBlacklistText();
+  showSettings.value = true;
+};
+
+const saveSettings = () => {
+  const portN = Number(draftLanPort.value);
+  if (!Number.isFinite(portN) || portN < 1 || portN > 65535) {
+    window.$message && window.$message.error("探测端口须为 1–65535");
+    return;
+  }
+  if (!settings.setLanDiscoverPort(portN) && draftLanDiscover.value) {
+    window.$message && window.$message.error("探测端口须为 1–65535");
+    return;
+  }
+  if (!settings.setMaxClients(draftMaxClients.value)) {
+    window.$message && window.$message.error("右键上限须为 1–64");
+    return;
+  }
+  if (!settings.setAuthRatePerMin(draftAuthRate.value)) {
+    window.$message && window.$message.error("授权限流须为 1–60");
+    return;
+  }
+  if (!settings.setAuthCooldownSec(draftAuthCool.value)) {
+    window.$message && window.$message.error("冷却秒数须为 0–86400");
+    return;
+  }
+  settings.setAuthBlacklistText(draftBlacklist.value);
+  settings.setLanDiscoverPause(!!draftLanPause.value && !!draftLanDiscover.value);
+  settings.setLanDiscover(!!draftLanDiscover.value);
+  lanDiscover.value = settings.getLanDiscover();
+  lanPause.value = settings.getLanDiscoverPause();
+  lanPort.value = settings.getLanDiscoverPort();
+  maxClients.value = settings.getMaxClients();
+  // 保存后立刻套用：开/关探测、限流/冷却/黑名单；已开服则热更新人数上限
+  if (typeof window.applyLanSettingsNow === "function") {
+    const connected = !!(mbStore.isConnected || mbStore.connectedCount > 0);
+    const advertisePort = mbStore.serverMode && mbStore.isServerStart ? Number(tsStore.portNumber) || 0 : 0;
+    window.applyLanSettingsNow({
+      connected,
+      connectedCount: mbStore.connectedCount,
+      advertisePort,
+      udpPort: lanPort.value,
+    });
+  }
+  if (mbStore.isServerStart) {
+    mbStore.maxConnections = maxClients.value;
+  }
+  showSettings.value = false;
+  pushLanState();
+  window.$message && window.$message.success("设置已保存并生效");
+};
+
+const onAuthDecide = (host, action) => {
+  if (typeof window.decideLanAuth !== "function") {
+    return;
+  }
+  const r = window.decideLanAuth(host, action);
+  pushLanState();
+  if (!r || !r.ok) {
+    return;
+  }
+  if (r.action === "allow") {
+    window.$message && window.$message.success("已允许 " + (r.name || host));
+  } else if (r.action === "blacklist") {
+    window.$message && window.$message.success("已拉黑 " + (r.name || host));
+  } else {
+    window.$message && window.$message.info("已拒绝 " + (r.name || host));
+  }
+};
+
+const onAuthDenyAll = () => {
+  if (typeof window.denyAllLanAuth === "function") {
+    window.denyAllLanAuth();
+  }
+  pushLanState();
+  window.$message && window.$message.info("已全部拒绝");
+};
+
+const onKick = (host) => {
+  if (typeof window.kickClientHost === "function" && window.kickClientHost(host)) {
+    window.$message && window.$message.success("已踢下线 " + host);
+  }
+  pushLanState();
+};
+
+const onKickAll = () => {
+  if (typeof window.kickAllClients === "function") {
+    window.kickAllClients();
+  }
+  pushLanState();
+  window.$message && window.$message.success("已全部踢下线");
+};
+
+const onLanDiscoverChange = (checked) => {
+  lanDiscover.value = !!checked;
+  settings.setLanDiscover(checked);
+  pushLanState();
+};
+
+const onLanPauseChange = (checked) => {
+  lanPause.value = !!checked;
+  settings.setLanDiscoverPause(checked);
+  pushLanState();
+};
+
+const onLanPortChange = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1 || n > 65535) {
+    window.$message && window.$message.error("探测端口须为 1–65535");
+    lanPort.value = settings.getLanDiscoverPort();
+    return;
+  }
+  lanPort.value = n;
+  settings.setLanDiscoverPort(n);
+  pushLanState();
+};
+
+const applyLanPeer = async (peer) => {
+  if (!peer || mbStore.serverMode || mbStore.isConnected) {
+    return;
+  }
+  const cur = String(tsStore.inputText || "").trim();
+  const first = cur.split(/\r?\n/, 1)[0].trim();
+  let key = "";
+  const m = first.match(/\/k(\S+)/);
+  if (m && m[1] && m[1].length >= 8) {
+    key = m[1];
+  } else if (settings.getRememberClientConnection()) {
+    const saved = settings.formatSavedClientRaw();
+    const sm = String(saved || "").match(/\/k(\S+)/);
+    if (sm) {
+      key = sm[1];
+    }
+  }
+  const host = String(peer.host).includes(":") ? "[" + peer.host + "]" : peer.host;
+  if (key) {
+    tsStore.setInputValueSync("ts://" + host + ":" + peer.tcpPort + "/k" + key);
+    window.$message && window.$message.success("正在连接 " + host);
+    mbStore.clientStart(tsStore.inputText);
+    return;
+  }
+  if (!lanDiscover.value) {
+    window.$message && window.$message.error("请先打开局域网探测");
+    return;
+  }
+  if (typeof window.requestLanAuthConnect !== "function") {
+    window.$message && window.$message.error("当前版本不支持临时授权");
+    return;
+  }
+  window.$message && window.$message.info("正在请求授权…");
+  try {
+    const uri = await window.requestLanAuthConnect(peer.host, lanPort.value);
+    tsStore.setInputValueSync(uri);
+    window.$message && window.$message.success("已获授权，正在连接");
+    mbStore.clientStart(uri);
+  } catch (e) {
+    window.$message && window.$message.error(String(e && e.message ? e.message : e));
+  }
+};
 
 const onRememberClientChange = (checked) => {
   rememberClientConnection.value = !!checked;
@@ -288,7 +662,7 @@ const lanuchBtnEvent = (oneClient = true) => {
       if (oneClient) {
         mbStore.serverStart(tsStore.portNumber, 1);
       } else {
-        mbStore.serverStart(tsStore.portNumber, 7);
+        mbStore.serverStart(tsStore.portNumber, settings.getMaxClients());
       }
     }
   } else {
@@ -427,6 +801,7 @@ const dragging = ref(false);
 let dragDepth = 0;
 let lastEventSeq = 0;
 let fileTimer = null;
+let lanTimer = null;
 
 const queueItems = computed(() => fileStat.value.items || []);
 const fileBusy = computed(() => !!fileStat.value.busy);
@@ -637,20 +1012,82 @@ const onDrop = (e) => {
   }
 };
 
+const applyPendingTsUri = async (uri) => {
+  const raw = String(uri || "").trim();
+  if (!raw) {
+    return;
+  }
+  try {
+    if (mbStore.isConnected && !mbStore.serverMode) {
+      await mbStore.clientStop();
+    }
+    if (mbStore.serverMode && mbStore.isServerStart) {
+      await mbStore.serverStop();
+    }
+    if (mbStore.serverMode) {
+      mbStore.changeServerMode();
+    }
+    tsStore.setInputValueSync(raw);
+    window.$message && window.$message.success("已识别连接串，正在连接…");
+    mbStore.clientStart(raw);
+  } catch (e) {
+    window.$message && window.$message.error(String(e && e.message ? e.message : e));
+  }
+};
+
+const onPendingTsUriEvent = (ev) => {
+  const uri = ev && ev.detail ? String(ev.detail) : "";
+  if (uri) {
+    applyPendingTsUri(uri);
+    if (typeof window.consumePendingTsUri === "function") {
+      window.consumePendingTsUri();
+    }
+  }
+};
+
+const tryConsumePendingTsUri = () => {
+  if (typeof window.consumePendingTsUri !== "function") {
+    return;
+  }
+  const uri = window.consumePendingTsUri();
+  if (uri) {
+    applyPendingTsUri(uri);
+  }
+};
+
 onMounted(() => {
   pollFile();
+  pushLanState();
   fileTimer = setInterval(pollFile, 250);
-  if (!autoStartLaunched && mbStore.serverMode && autoStartServer.value && !mbStore.isServerStart) {
+  lanTimer = setInterval(pushLanState, 1000);
+  window.addEventListener("textsend-pending-uri", onPendingTsUriEvent);
+  const hasPendingUri = typeof window.peekPendingTsUri === "function" && !!window.peekPendingTsUri();
+  // 稍后再取：等界面就绪；有连接串时本轮不自动开服
+  setTimeout(tryConsumePendingTsUri, 80);
+  if (!hasPendingUri && !autoStartLaunched && mbStore.serverMode && autoStartServer.value && !mbStore.isServerStart) {
     autoStartLaunched = true;
     mbStore.serverStart(tsStore.portNumber, 1);
   }
 });
 onUnmounted(() => {
+  window.removeEventListener("textsend-pending-uri", onPendingTsUriEvent);
   if (fileTimer) {
     clearInterval(fileTimer);
     fileTimer = null;
   }
+  if (lanTimer) {
+    clearInterval(lanTimer);
+    lanTimer = null;
+  }
+  if (typeof window.stopLanDiscover === "function") {
+    window.stopLanDiscover();
+  }
 });
+
+watch(
+  () => [mbStore.isConnected, mbStore.connectedCount, mbStore.isServerStart, mbStore.serverMode, tsStore.portNumber],
+  () => pushLanState()
+);
 
 watch(() => [tsStore.ipAddr, tsStore.portNumber], (now, prev) => {
   if (!mbStore.isServerStart || !qrStore.pskB64 || !tsStore.ipAddr) {
@@ -682,31 +1119,25 @@ const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.vers
 
 —— 连上 ——
 · 选好本机局域网 IP 和端口，点「启动」。左侧出现二维码和 PIN。
-· 可勾选「启动即开服」：下次打开插件自动开服（默认关）。会记住上次选的 IP，换网后不在列表则自动重选。
-· 可勾选「固定 PIN」并输入 8 位数字：每次启动服务端用同一 PIN（默认关，随机 PIN + 长密钥）。
-· 左侧二维码：点击复制长密钥连接串；启动服务时也会自动复制。
-· 对面用手机 / PC 扫码，或手输 8 位 PIN。
-· 点开 IP 框只是换网卡，不会停服务。真的换了 IP，码会自己更新。
-· 点「切换」到客户端：在输入框粘贴 ts://IP/kPIN（端口可省略，默认 54300），再点「连接」。
-· 客户端可勾选「记住上次连接」：PIN 连成功后记住 IP、端口和 PIN（默认关，不记长密钥）。
+· 可勾选「启动即开服」 / 「固定 PIN」（默认关）。
+· 点「切换」到客户端：粘贴 ts://IP/kPIN（端口可省略），再点「连接」。
+· 也可在 uTools 主搜索框直接粘贴 ts://… ，选「用 TextSend 连接」会自动打开并连接。
+· 「局域网探测」（默认关）：点设备请求临时授权（免输 PIN，须对方在「待授权」允许）。
+· 连接和探测默认都用 54300。连接是 TCP，发现设备是 UDP。防火墙若只放了 TCP，还要放行 UDP 54300。可勾「有连接时关闭」。
+
+—— 待授权 / 已连接 / 设置 ——
+· 「待授权」：允许 / 拒绝 / 拉黑。「已连接」可踢下线。
+· 「设置」：右键启动上限、授权限流（默认 3 次/分·IP）、拒绝冷却（默认 120 秒）、黑名单。
 
 —— 左键 / 右键不一样 ——
-· 「启动」左键：只允许 1 个客户端。右键：最多 7 个。
-· 「文件」左键：选扁文件（最多 50）。右键：选文件夹。Shift+左键也是文件夹。
-· PIN：左键复制 ts://…/kPIN；右键只复制 8 位数字。
+· 「启动」左键最多 1 人；右键最多 N 人（N 在设置，默认 7）。
+· 「文件」左键选文件；右键/Shift+左键选文件夹。
 
 —— 文字 / 文件 ——
-· 连上后只有一个「发送」（底栏；Ctrl+Enter 一样）：有图片预览先发图，有待发就发文件，否则发文字。
-· Ctrl+V 剪贴板图片会先出现预览，点「发送」才传；点缩略图看大图，Backspace 清除。
-· 「文件」加入待发后再点「发送」。也可把文件/文件夹拖进窗口。「清空」一键清掉待发列表。
-· 对面落到「下载/TextSend」，不弹保存框。
-· 本机收到的图 ≤20MB 进剪贴板；手机发来的图一律落地。
-· 「取消」只停这一轮，待发列表还在。发送方取消对面留半截可续传；接收方取消才删半截。
-
-连不上时：两边同一 Wi‑Fi，关加速 / 双通道；电脑有线和 USB 网卡别挂同一网段。
+· 「发送」：有预览先发图，有待发发文件，否则发文字。对面落到「下载/TextSend」。
 
 —— 其他端 ——
-· Android APK：点「关于」→ 悬停 GitHub / Gitee 看二维码，点击用浏览器打开。`;
+· Android APK：点「关于」→ 悬停 GitHub / Gitee 看二维码。`;
 // 文本框默认字
 let placeholder = computed(() => tsStore.getInputTextPlaceholder);
 let launchBtnText = computed(() => tsStore.getLaunchBtnText);
@@ -1144,6 +1575,126 @@ try {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.lan-peers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 0 2px 6px;
+}
+
+.lan-peers-label {
+  font-size: 12px;
+  color: var(--ts-muted);
+}
+
+.lan-peer {
+  border: 1px solid var(--ts-line);
+  background: var(--ts-surface);
+  color: inherit;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lan-peer--entry {
+  border-radius: 6px;
+}
+
+.auth-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.auth-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.auth-btn {
+  border: 1px solid var(--ts-line);
+  background: var(--ts-chip);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.auth-btn--all {
+  align-self: flex-end;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.settings-row :deep(.n-input-number) {
+  width: 88px;
+}
+
+.settings-bl-title {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.settings-hint {
+  font-size: 12px;
+  color: var(--ts-muted);
+  line-height: 1.45;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.lan-port-input {
+  width: 72px;
+}
+
+.lan-on-hint {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--ts-accent, #18a058);
+  white-space: nowrap;
+}
+
+.settings-form :deep(.n-checkbox) {
+  align-self: flex-start;
 }
 </style>
 

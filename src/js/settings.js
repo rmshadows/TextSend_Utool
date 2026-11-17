@@ -93,6 +93,117 @@ export function setCustomPin(pin) {
     return false;
 }
 
+export function getLanDiscover() {
+    if (typeof window.getLanDiscover === "function") {
+        return !!window.getLanDiscover();
+    }
+    return false;
+}
+
+export function setLanDiscover(v) {
+    if (typeof window.setLanDiscover === "function") {
+        window.setLanDiscover(!!v);
+    }
+}
+
+export function getLanDiscoverPause() {
+    if (typeof window.getLanDiscoverPause === "function") {
+        return !!window.getLanDiscoverPause();
+    }
+    return false;
+}
+
+export function setLanDiscoverPause(v) {
+    if (typeof window.setLanDiscoverPause === "function") {
+        window.setLanDiscoverPause(!!v);
+    }
+}
+
+export function getLanDiscoverPort() {
+    if (typeof window.getLanDiscoverPort === "function") {
+        const n = Number(window.getLanDiscoverPort());
+        if (Number.isFinite(n) && n >= 1 && n <= 65535) {
+            return n;
+        }
+    }
+    return 54300;
+}
+
+export function setLanDiscoverPort(port) {
+    const n = Number(port);
+    if (!Number.isFinite(n) || n < 1 || n > 65535) {
+        return false;
+    }
+    if (typeof window.setLanDiscoverPort === "function") {
+        return window.setLanDiscoverPort(n) !== false;
+    }
+    return false;
+}
+
+export function getMaxClients() {
+    if (typeof window.getMaxClients === "function") {
+        const n = Number(window.getMaxClients());
+        if (Number.isFinite(n) && n >= 1 && n <= 64) {
+            return n;
+        }
+    }
+    return 7;
+}
+
+export function setMaxClients(n) {
+    if (typeof window.setMaxClients === "function") {
+        return window.setMaxClients(n) !== false;
+    }
+    return false;
+}
+
+export function getAuthRatePerMin() {
+    if (typeof window.getAuthRatePerMin === "function") {
+        const n = Number(window.getAuthRatePerMin());
+        if (Number.isFinite(n) && n >= 1 && n <= 60) {
+            return n;
+        }
+    }
+    return 3;
+}
+
+export function setAuthRatePerMin(n) {
+    if (typeof window.setAuthRatePerMin === "function") {
+        return window.setAuthRatePerMin(n) !== false;
+    }
+    return false;
+}
+
+export function getAuthCooldownSec() {
+    if (typeof window.getAuthCooldownSec === "function") {
+        const n = Number(window.getAuthCooldownSec());
+        if (Number.isFinite(n) && n >= 0 && n <= 86400) {
+            return n;
+        }
+    }
+    return 120;
+}
+
+export function setAuthCooldownSec(n) {
+    if (typeof window.setAuthCooldownSec === "function") {
+        return window.setAuthCooldownSec(n) !== false;
+    }
+    return false;
+}
+
+export function getAuthBlacklistText() {
+    if (typeof window.getAuthBlacklistText === "function") {
+        return String(window.getAuthBlacklistText() || "");
+    }
+    return "";
+}
+
+export function setAuthBlacklistText(text) {
+    if (typeof window.setAuthBlacklistText === "function") {
+        window.setAuthBlacklistText(text);
+    }
+}
+
 export function getRememberClientConnection() {
     if (typeof window.getRememberClientConnection === "function") {
         return !!window.getRememberClientConnection();
