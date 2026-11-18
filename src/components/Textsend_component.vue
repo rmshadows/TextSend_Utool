@@ -162,7 +162,7 @@
               title="默认关。打开后可被发现，并允许客户端请求临时授权（须本机点允许）。"
               @update:checked="onDraftLanDiscover">局域网探测</n-checkbox>
             <n-checkbox :checked="draftLanPause" :disabled="!draftLanDiscover"
-              title="默认关。已有连接时暂停广播和探测。"
+              title="默认开。已有连接时暂停广播和探测。"
               @update:checked="onDraftLanPause">有连接时关闭探测</n-checkbox>
             <label class="settings-row" title="和连接同一端口号，默认 54300，协议是 UDP。两端要一致。防火墙若只放了 TCP，还要放行 UDP。">探测端口
               <n-input-number v-model:value="draftLanPort" :min="1" :max="65535" :show-button="false"
@@ -438,9 +438,6 @@ const pushLanState = () => {
 
 const onDraftLanDiscover = (checked) => {
   draftLanDiscover.value = !!checked;
-  if (!checked) {
-    draftLanPause.value = false;
-  }
 };
 
 const onDraftLanPause = (checked) => {
@@ -481,7 +478,7 @@ const saveSettings = () => {
     return;
   }
   settings.setAuthBlacklistText(draftBlacklist.value);
-  settings.setLanDiscoverPause(!!draftLanPause.value && !!draftLanDiscover.value);
+  settings.setLanDiscoverPause(!!draftLanPause.value);
   settings.setLanDiscover(!!draftLanDiscover.value);
   lanDiscover.value = settings.getLanDiscover();
   lanPause.value = settings.getLanDiscoverPause();
@@ -605,7 +602,7 @@ const applyLanPeer = async (peer) => {
   }
   window.$message && window.$message.info("正在请求授权…");
   try {
-    const uri = await window.requestLanAuthConnect(peer.host, lanPort.value);
+    const uri = await window.requestLanAuthConnect(peer.host, peer.tcpPort);
     tsStore.setInputValueSync(uri);
     window.$message && window.$message.success("已获授权，正在连接");
     mbStore.clientStart(uri);
@@ -1123,7 +1120,7 @@ const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.vers
 · 点「切换」到客户端：粘贴 ts://IP/kPIN（端口可省略），再点「连接」。
 · 也可在 uTools 主搜索框直接粘贴 ts://… ，选「用 TextSend 连接」会自动打开并连接。
 · 「局域网探测」（默认关）：点设备请求临时授权（免输 PIN，须对方在「待授权」允许）。
-· 连接和探测默认都用 54300。连接是 TCP，发现设备是 UDP。防火墙若只放了 TCP，还要放行 UDP 54300。可勾「有连接时关闭」。
+· 连接和探测默认都用 54300。连接是 TCP，发现设备是 UDP。防火墙若只放了 TCP，还要放行 UDP 54300。「有连接时关闭」默认开。
 
 —— 待授权 / 已连接 / 设置 ——
 · 「待授权」：允许 / 拒绝 / 拉黑。「已连接」可踢下线。

@@ -84,6 +84,10 @@ class TsPeer {
         return this.handshakeOk;
     }
 
+    authRejected() {
+        return !!this.authBadKey;
+    }
+
     supportsFile() {
         return this.peerHasFile;
     }
@@ -200,6 +204,16 @@ class TsPeer {
             const info = C.HKDF_INFO_PIN_PREFIX + this.material.pin;
             this.aesKey = Hkdf.derive(shared, salt, info, C.PSK_LEN);
         } else if (mode === "psk") {
+            this._log("【握手】PSK 模式：临时授权对不上时再用扫码长密钥");
+            serverKx.nonce = B64.enc(serverNonce);
+            this._writePlain(C.TYPE_KEY_EXCHANGE, serverKx);
+        } else {
+            throw new Error("unsupported mode: " + mode);
+        }
+
+        const auth = await this.readExpect(C.TYPE_AUTH_OK);
+        let plain;
+        if (mode === "psk") {
             let remoteHost = "";
             try {
                 remoteHost = String(this.socket.remoteAddress || "");
@@ -208,26 +222,18 @@ class TsPeer {
                 }
             } catch (_e) {
             }
-            const grantPsk = this.server && typeof this.server.peekGrant === "function"
-                ? this.server.peekGrant(remoteHost)
-                : null;
-            const psk = grantPsk || this.material.psk;
-            this._log("【握手】PSK 模式：" + (grantPsk ? "局域网临时授权" : "扫码长密钥"));
-            serverKx.nonce = B64.enc(serverNonce);
-            this._writePlain(C.TYPE_KEY_EXCHANGE, serverKx);
             const clientNonce = B64.dec(clientKx.nonce);
             const salt = Buffer.concat([serverNonce, clientNonce]);
-            this.aesKey = Hkdf.derive(psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
-            if (grantPsk) {
-                this.pendingGrantPsk = grantPsk;
-                this.pendingGrantHost = remoteHost;
-            }
+            plain = this._openPskAuth(auth.payload, salt, remoteHost);
         } else {
-            throw new Error("unsupported mode: " + mode);
+            try {
+                plain = AesGcm.open(this.aesKey, auth.payload);
+            } catch (e) {
+                this.authBadKey = true;
+                throw e;
+            }
         }
-
-        const auth = await this.readExpect(C.TYPE_AUTH_OK);
-        const clientAuth = JSON.parse(AesGcm.open(this.aesKey, auth.payload).toString("utf8"));
+        const clientAuth = JSON.parse(plain.toString("utf8"));
         if (clientAuth.role !== "client") {
             throw new Error("bad AUTH_OK role");
         }
@@ -245,6 +251,36 @@ class TsPeer {
         };
         this._writeCipher(C.TYPE_AUTH_OK, Buffer.from(JSON.stringify(ok), "utf8"));
         this._log("【握手】完成  mode=" + mode + "  sessionId=" + this.sessionId);
+    }
+
+    _openPskAuth(payload, salt, host) {
+        const grants = this.server && typeof this.server.grantCandidates === "function"
+            ? this.server.grantCandidates(host)
+            : [];
+        for (const g of grants) {
+            try {
+                const key = Hkdf.derive(g.psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
+                const plain = AesGcm.open(key, payload);
+                this.aesKey = key;
+                this.pendingGrantPsk = g.psk;
+                this.pendingGrantHost = g.host;
+                this._log(g.forHost ? "【握手】PSK 命中该地址的临时授权" : "【握手】PSK 命中另一网卡上的临时授权");
+                return plain;
+            } catch (_e) {
+            }
+        }
+        try {
+            const key = Hkdf.derive(this.material.psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
+            const plain = AesGcm.open(key, payload);
+            this.aesKey = key;
+            this.pendingGrantPsk = null;
+            this.pendingGrantHost = null;
+            this._log("【握手】PSK 命中扫码长密钥");
+            return plain;
+        } catch (e) {
+            this.authBadKey = true;
+            throw e;
+        }
     }
 
     async _handshakeClient() {

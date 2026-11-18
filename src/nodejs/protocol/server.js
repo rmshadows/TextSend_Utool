@@ -110,7 +110,7 @@ class TsServer {
             },
             onClosed: () => {
                 const self = box.peer;
-                if (self && !self.handshakeSucceeded() && this.running) {
+                if (self && self.authRejected && self.authRejected() && this.running) {
                     this.limiter.fail(ip);
                 }
                 this.peers = this.peers.filter((p) => p.isAlive());
@@ -144,6 +144,24 @@ class TsServer {
         this._purgeGrants();
         const g = this.lanGrants.get(normalizeHost(host));
         return g ? g.psk : null;
+    }
+
+    grantCandidates(host) {
+        this._purgeGrants();
+        const h = normalizeHost(host);
+        const now = Date.now();
+        const out = [];
+        const exact = this.lanGrants.get(h);
+        if (exact && exact.expireAt > now) {
+            out.push({ host: h, psk: exact.psk, forHost: true });
+        }
+        for (const [key, g] of this.lanGrants) {
+            if (key === h || !g || g.expireAt <= now) {
+                continue;
+            }
+            out.push({ host: key, psk: g.psk, forHost: false });
+        }
+        return out;
     }
 
     consumeGrant(host, psk) {

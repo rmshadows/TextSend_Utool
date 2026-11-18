@@ -110,7 +110,7 @@ export function getLanDiscoverPause() {
     if (typeof window.getLanDiscoverPause === "function") {
         return !!window.getLanDiscoverPause();
     }
-    return false;
+    return true;
 }
 
 export function setLanDiscoverPause(v) {

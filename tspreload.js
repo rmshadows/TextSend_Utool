@@ -233,11 +233,16 @@ window.setLanDiscover = function (v) {
 };
 
 window.getLanDiscoverPause = function () {
-    return storageFlagGet("textsend.lanDiscoverPause");
+    const v = utools.dbStorage.getItem("textsend.lanDiscoverPause");
+    // 没存过就是开。关掉会写成 0，不能删键，否则和「从没设置」分不开。
+    if (v == null) {
+        return true;
+    }
+    return v === true || v === 1 || v === "1" || v === "true";
 };
 
 window.setLanDiscoverPause = function (v) {
-    storageFlagSet("textsend.lanDiscoverPause", !!v);
+    utools.dbStorage.setItem("textsend.lanDiscoverPause", v ? 1 : 0);
 };
 
 window.getLanDiscoverPort = function () {
@@ -402,10 +407,21 @@ window.kickAllClients = function () {
     return n;
 };
 
-/** 客户端点设备：走 TSA1 授权，返回连接串或抛错信息对象 */
-window.requestLanAuthConnect = async function (host, udpPort) {
-    const grant = await lanDiscover.requestAuth(host, udpPort || window.getLanDiscoverPort());
-    return TsUri.format(String(host || ""), grant.tcpPort, grant.pskB64);
+/** 客户端点设备：先走 TCP 敲门，UDP 只作备用。拒绝和冷却不再改走 UDP。 */
+window.requestLanAuthConnect = async function (host, tcpPort) {
+    const lanAuth = require("./src/nodejs/protocol/lanAuth");
+    const port = Number(tcpPort) >= 1 && Number(tcpPort) <= 65535 ? Number(tcpPort) : 54300;
+    let grant;
+    try {
+        grant = await lanDiscover.requestAuthTcp(host, port);
+    } catch (e) {
+        if (lanAuth.isDenied(e)) {
+            throw e;
+        }
+        grant = await lanDiscover.requestAuth(host, window.getLanDiscoverPort());
+    }
+    const usePort = grant.tcpPort > 0 ? grant.tcpPort : port;
+    return TsUri.format(String(host || ""), usePort, grant.pskB64);
 };
 
 window.getRememberClientConnection = function () {

@@ -14,8 +14,9 @@ const DEFAULT_PORT = 54300;
 const MAGIC = Buffer.from("TSD1");
 const VERSION = 1;
 const NAME_MAX = 48;
-const INTERVAL_MS = 2000;
-const PEER_TTL_MS = 7000;
+const INTERVAL_MS = 1000;
+// 超过这个时间没再收到广播就从列表去掉。强杀来不及发下线包，只能靠超时。
+const PEER_TTL_MS = 2500;
 
 const instanceId = crypto.randomBytes(8);
 const peers = new Map();
@@ -27,7 +28,7 @@ let bindError = "";
 let onAuthRequest = null;
 let state = {
     enabled: false,
-    pauseWhenConnected: false,
+    pauseWhenConnected: true,
     connected: false,
     advertisePort: 0,
     udpPort: DEFAULT_PORT,
@@ -209,6 +210,10 @@ function requestAuth(host, udpPort) {
     return lanAuth.requestAuth(sock, host, udpPort, deviceName());
 }
 
+function requestAuthTcp(host, tcpPort) {
+    return lanAuth.requestAuthTcp(host, tcpPort, deviceName());
+}
+
 function bindTip(port, err) {
     const code = err && err.code;
     const msg = err && err.message ? String(err.message) : "";
@@ -307,6 +312,7 @@ module.exports = {
     setAuthRequestHandler,
     sendAuthPacket,
     requestAuth,
+    requestAuthTcp,
 };
 
 if (require.main === module) {

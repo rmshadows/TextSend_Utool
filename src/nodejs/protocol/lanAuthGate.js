@@ -50,11 +50,19 @@ function setConfig(next) {
     }
 }
 
-function denySilent(req) {
+function denySilent(req, waitSec) {
     if (!req) {
         return;
     }
-    lanDiscover.sendAuthPacket(req.host, req.replyPort, lanAuth.encodeDeny(req.nonce));
+    lanDiscover.sendAuthPacket(req.host, req.replyPort, lanAuth.encodeDeny(req.nonce, waitSec));
+}
+
+function cooldownLeftSec(host, now) {
+    const until = cooldownUntil.get(host) || 0;
+    if (until <= now) {
+        return 0;
+    }
+    return Math.min(lanAuth.DENY_HARD - 1, Math.max(1, Math.ceil((until - now) / 1000)));
 }
 
 function noteHit(host, now) {
@@ -68,9 +76,7 @@ function noteHit(host, now) {
         hits.shift();
     }
     if (hits.length >= cfg.ratePerMin) {
-        if (cfg.cooldownSec > 0) {
-            cooldownUntil.set(host, now + cfg.cooldownSec * 1000);
-        }
+        applyCooldown(host);
         return false;
     }
     hits.push(now);
@@ -116,16 +122,16 @@ function onRequest(req) {
     const now = Date.now();
     const until = cooldownUntil.get(host) || 0;
     if (until > now) {
-        denySilent(req);
+        denySilent(req, cooldownLeftSec(host, now));
         return;
     }
     if (!noteHit(host, now)) {
-        denySilent(req);
+        denySilent(req, cooldownLeftSec(host, Date.now()));
         return;
     }
     const prev = pendingByHost.get(host);
     if (prev && prev.req && !prev.req.nonce.equals(req.nonce)) {
-        denySilent(prev.req);
+        denySilent(prev.req, 0);
     }
     pendingByHost.set(host, { req, at: now, name: req.name || "" });
     trimOverflow();
@@ -149,10 +155,13 @@ function listPending() {
 }
 
 function applyCooldown(host) {
-    if (cfg.cooldownSec <= 0) {
+    const key = normalizeHost(host);
+    if (cfg.cooldownSec <= 0 || !key) {
         return;
     }
-    cooldownUntil.set(normalizeHost(host), Date.now() + cfg.cooldownSec * 1000);
+    cooldownUntil.set(key, Date.now() + cfg.cooldownSec * 1000);
+    // 冷却代替滑动窗口，结束后可以再请求。
+    hitsByHost.delete(key);
 }
 
 /**
@@ -184,8 +193,12 @@ function decide(host, action) {
     if (s) {
         s.revokeLanGrant(req.host);
     }
-    denySilent(req);
-    applyCooldown(key);
+    if (action === "blacklist" || cfg.blacklist.has(key)) {
+        denySilent(req, lanAuth.DENY_HARD);
+    } else {
+        applyCooldown(key);
+        denySilent(req, Math.min(lanAuth.DENY_HARD - 1, Math.max(0, cfg.cooldownSec)));
+    }
     return {
         ok: true,
         host: key,
