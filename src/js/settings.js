@@ -119,6 +119,32 @@ export function setLanDiscoverPause(v) {
     }
 }
 
+export function getLanDiscoverAnnounce() {
+    if (typeof window.getLanDiscoverAnnounce === "function") {
+        return !!window.getLanDiscoverAnnounce();
+    }
+    return true;
+}
+
+export function setLanDiscoverAnnounce(v) {
+    if (typeof window.setLanDiscoverAnnounce === "function") {
+        window.setLanDiscoverAnnounce(!!v);
+    }
+}
+
+export function getLanDiscoverPortFollow() {
+    if (typeof window.getLanDiscoverPortFollow === "function") {
+        return !!window.getLanDiscoverPortFollow();
+    }
+    return true;
+}
+
+export function setLanDiscoverPortFollow(v) {
+    if (typeof window.setLanDiscoverPortFollow === "function") {
+        window.setLanDiscoverPortFollow(!!v);
+    }
+}
+
 export function getLanDiscoverPort() {
     if (typeof window.getLanDiscoverPort === "function") {
         const n = Number(window.getLanDiscoverPort());
@@ -181,7 +207,7 @@ export function getAuthCooldownSec() {
             return n;
         }
     }
-    return 120;
+    return 10;
 }
 
 export function setAuthCooldownSec(n) {

@@ -261,12 +261,20 @@ class TsPeer {
             try {
                 const key = Hkdf.derive(g.psk, salt, C.HKDF_INFO_PSK, C.PSK_LEN);
                 const plain = AesGcm.open(key, payload);
+                if (!this.server.claimGrant(g.host, g.psk)) {
+                    const used = new Error("授权已使用");
+                    used.grantUsed = true;
+                    throw used;
+                }
                 this.aesKey = key;
                 this.pendingGrantPsk = g.psk;
                 this.pendingGrantHost = g.host;
                 this._log(g.forHost ? "【握手】PSK 命中该地址的临时授权" : "【握手】PSK 命中另一网卡上的临时授权");
                 return plain;
-            } catch (_e) {
+            } catch (e) {
+                if (e && e.grantUsed) {
+                    throw e;
+                }
             }
         }
         try {

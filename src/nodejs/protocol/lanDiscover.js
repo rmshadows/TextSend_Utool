@@ -26,9 +26,13 @@ let boundPort = -1;
 let bindError = "";
 /** @type {null | ((req: object) => void)} */
 let onAuthRequest = null;
+let onAuthCancel = null;
+const QUERY = Buffer.from([0x54, 0x53, 0x51, 0x31, 1, 0]);
+
 let state = {
     enabled: false,
     pauseWhenConnected: true,
+    announce: true,
     connected: false,
     advertisePort: 0,
     udpPort: DEFAULT_PORT,
@@ -115,12 +119,17 @@ function udpPort() {
     return Number.isFinite(n) && n >= 1 && n <= 65535 ? n : DEFAULT_PORT;
 }
 
-function running() {
-    return !!state.enabled && !(state.pauseWhenConnected && state.connected);
+function listening() {
+    return !!state.enabled;
+}
+
+/** 有连接且勾了暂停：停广播、不显示设备，套接字留着收授权。 */
+function broadcasting() {
+    return listening() && !(state.pauseWhenConnected && state.connected);
 }
 
 function listPeers() {
-    if (!running() || bindError) {
+    if (!broadcasting() || bindError) {
         return [];
     }
     const now = Date.now();
@@ -136,8 +145,41 @@ function listPeers() {
     return out;
 }
 
+function isQuery(buf) {
+    return Buffer.isBuffer(buf) && buf.length >= 6
+        && buf[0] === 0x54 && buf[1] === 0x53 && buf[2] === 0x51 && buf[3] === 0x31
+        && buf[4] === 1;
+}
+
+function sendProbe() {
+    if (!sock || !broadcasting() || bindError) {
+        return;
+    }
+    const disco = udpPort();
+    for (const addr of broadcastAddrs()) {
+        try {
+            sock.send(QUERY, disco, addr);
+        } catch (_e) {
+        }
+    }
+}
+
+function replyQuery(rinfo) {
+    if (!sock || !rinfo) {
+        return;
+    }
+    const port = Number(state.advertisePort);
+    if (!Number.isFinite(port) || port < 1 || port > 65535) {
+        return;
+    }
+    try {
+        sock.send(encode(port, deviceName(), instanceId), rinfo.port, rinfo.address);
+    } catch (_e) {
+    }
+}
+
 function sendBeacon() {
-    if (!sock || !running() || bindError) {
+    if (!sock || !broadcasting() || !state.announce || bindError) {
         return;
     }
     const port = Number(state.advertisePort);
@@ -158,6 +200,10 @@ function onMessage(msg, rinfo) {
     if (!rinfo || rinfo.family === "IPv6" || rinfo.address === "0.0.0.0" || rinfo.address === "127.0.0.1") {
         return;
     }
+    if (isQuery(msg)) {
+        replyQuery(rinfo);
+        return;
+    }
     if (lanAuth.isAuthPacket(msg)) {
         const type = lanAuth.typeOf(msg);
         if (type === lanAuth.TYPE_GRANT || type === lanAuth.TYPE_DENY || type === lanAuth.TYPE_PENDING) {
@@ -171,6 +217,16 @@ function onMessage(msg, rinfo) {
             }
             return;
         }
+        if (type === lanAuth.TYPE_CANCEL) {
+            const nonce = lanAuth.cancelNonce(msg);
+            if (nonce && typeof onAuthCancel === "function") {
+                onAuthCancel(rinfo.address, nonce);
+            }
+            return;
+        }
+        return;
+    }
+    if (!broadcasting()) {
         return;
     }
     const decoded = decode(msg);
@@ -185,6 +241,10 @@ function onMessage(msg, rinfo) {
 
 function setAuthRequestHandler(fn) {
     onAuthRequest = typeof fn === "function" ? fn : null;
+}
+
+function setAuthCancelHandler(fn) {
+    onAuthCancel = typeof fn === "function" ? fn : null;
 }
 
 function sendAuthPacket(host, port, buf) {
@@ -203,15 +263,15 @@ function sendAuthPacket(host, port, buf) {
     }
 }
 
-function requestAuth(host, udpPort) {
+function requestAuth(host, udpPort, onSas) {
     if (!sock) {
         return Promise.reject(new Error("请先打开局域网探测"));
     }
-    return lanAuth.requestAuth(sock, host, udpPort, deviceName());
+    return lanAuth.requestAuth(sock, host, udpPort, deviceName(), onSas);
 }
 
-function requestAuthTcp(host, tcpPort) {
-    return lanAuth.requestAuthTcp(host, tcpPort, deviceName());
+function requestAuthTcp(host, tcpPort, onSas) {
+    return lanAuth.requestAuthTcp(host, tcpPort, deviceName(), onSas);
 }
 
 function bindTip(port, err) {
@@ -236,7 +296,7 @@ function ensureLoop() {
         }
         bindError = bindTip(disco, err);
         stopLoop(false);
-        if (running()) {
+        if (listening()) {
             setTimeout(ensureLoop, 1500);
         }
     });
@@ -250,8 +310,16 @@ function ensureLoop() {
         boundPort = disco;
     });
     sock = created;
-    timer = setInterval(sendBeacon, INTERVAL_MS);
+    timer = setInterval(() => {
+        if (!broadcasting()) {
+            peers.clear();
+            return;
+        }
+        sendBeacon();
+        sendProbe();
+    }, INTERVAL_MS);
     sendBeacon();
+    sendProbe();
 }
 
 function stopLoop(clearError = true) {
@@ -279,13 +347,14 @@ function sync(next) {
     state = {
         enabled: !!(next && next.enabled),
         pauseWhenConnected: !!(next && next.pauseWhenConnected),
+        announce: !(next && next.announce === false),
         connected: !!(next && next.connected),
         advertisePort: Number(next && next.advertisePort) || 0,
         udpPort: Number.isFinite(nextPort) && nextPort >= 1 && nextPort <= 65535 ? nextPort : DEFAULT_PORT,
         name: next && next.name ? String(next.name) : state.name,
     };
     const paused = !!state.enabled && !!state.pauseWhenConnected && !!state.connected;
-    if (running()) {
+    if (listening()) {
         ensureLoop();
     } else {
         stopLoop(true);
@@ -293,7 +362,7 @@ function sync(next) {
     return {
         paused,
         peers: listPeers(),
-        bindError: running() ? bindError : "",
+        bindError: listening() ? bindError : "",
         udpPort: udpPort(),
     };
 }
@@ -310,6 +379,7 @@ module.exports = {
     listPeers,
     stop,
     setAuthRequestHandler,
+    setAuthCancelHandler,
     sendAuthPacket,
     requestAuth,
     requestAuthTcp,

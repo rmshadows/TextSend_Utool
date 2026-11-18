@@ -42,10 +42,10 @@ function writeAuthBlacklist(list) {
 function syncAuthGateConfig() {
     const rate = Number(utools.dbStorage.getItem("textsend.authRatePerMin"));
     const coolRaw = utools.dbStorage.getItem("textsend.authCooldownSec");
-    const cool = coolRaw == null ? 120 : Number(coolRaw);
+    const cool = coolRaw == null ? 10 : Number(coolRaw);
     lanAuthGate.setConfig({
         ratePerMin: Number.isFinite(rate) && rate >= 1 && rate <= 60 ? rate : 3,
-        cooldownSec: Number.isFinite(cool) && cool >= 0 && cool <= 86400 ? cool : 120,
+        cooldownSec: Number.isFinite(cool) && cool >= 0 && cool <= 86400 ? cool : 10,
         blacklist: readAuthBlacklist(),
     });
 }
@@ -245,7 +245,37 @@ window.setLanDiscoverPause = function (v) {
     utools.dbStorage.setItem("textsend.lanDiscoverPause", v ? 1 : 0);
 };
 
+function flagDefaultOn(key) {
+    const v = utools.dbStorage.getItem(key);
+    if (v == null) {
+        return true;
+    }
+    return v === true || v === 1 || v === "1" || v === "true";
+}
+
+window.getLanDiscoverAnnounce = function () {
+    return flagDefaultOn("textsend.lanDiscoverAnnounce");
+};
+
+window.setLanDiscoverAnnounce = function (v) {
+    utools.dbStorage.setItem("textsend.lanDiscoverAnnounce", v ? 1 : 0);
+};
+
+window.getLanDiscoverPortFollow = function () {
+    return flagDefaultOn("textsend.lanDiscoverPortFollow");
+};
+
+window.setLanDiscoverPortFollow = function (v) {
+    utools.dbStorage.setItem("textsend.lanDiscoverPortFollow", v ? 1 : 0);
+    if (v) {
+        utools.dbStorage.setItem("textsend.lanDiscoverPort", window.getListenPort());
+    }
+};
+
 window.getLanDiscoverPort = function () {
+    if (window.getLanDiscoverPortFollow()) {
+        return window.getListenPort();
+    }
     const v = utools.dbStorage.getItem("textsend.lanDiscoverPort");
     const n = Number(v);
     if (Number.isFinite(n) && n >= 1 && n <= 65535) {
@@ -255,6 +285,9 @@ window.getLanDiscoverPort = function () {
 };
 
 window.setLanDiscoverPort = function (port) {
+    if (window.getLanDiscoverPortFollow()) {
+        return true;
+    }
     const n = Number(port);
     if (!Number.isFinite(n) || n < 1 || n > 65535) {
         return false;
@@ -284,11 +317,36 @@ window.syncLanDiscover = function (live) {
     return lanDiscover.sync({
         enabled: true,
         pauseWhenConnected: window.getLanDiscoverPause(),
+        announce: window.getLanDiscoverAnnounce(),
         connected,
         advertisePort,
         udpPort: window.getLanDiscoverPort(),
         name: os.hostname() || "PC",
     });
+};
+
+window.resetTextsendSettings = function () {
+    utools.dbStorage.removeItem("textsend.autoStartServer");
+    utools.dbStorage.removeItem("textsend.customPinEnabled");
+    utools.dbStorage.setItem("textsend.customPin", "");
+    utools.dbStorage.removeItem("textsend.rememberClientConnection");
+    utools.dbStorage.removeItem("textsend.clientHost");
+    utools.dbStorage.removeItem("textsend.clientPort");
+    utools.dbStorage.removeItem("textsend.clientPin");
+    utools.dbStorage.removeItem("textsend.lanDiscover");
+    utools.dbStorage.setItem("textsend.lanDiscoverPause", 1);
+    utools.dbStorage.setItem("textsend.lanDiscoverAnnounce", 1);
+    utools.dbStorage.setItem("textsend.lanDiscoverPort", 54300);
+    utools.dbStorage.setItem("textsend.lanDiscoverPortFollow", 1);
+    utools.dbStorage.setItem("textsend.maxClients", 7);
+    utools.dbStorage.setItem("textsend.authRatePerMin", 3);
+    utools.dbStorage.setItem("textsend.authCooldownSec", 10);
+    utools.dbStorage.setItem("textsend.authBlacklist", "");
+    utools.dbStorage.setItem("textsend.listenPort", 54300);
+    utools.dbStorage.removeItem("textsend.listenIp");
+    lanDiscover.stop();
+    lanAuthGate.clearPending(true);
+    syncAuthGateConfig();
 };
 
 /** 设置保存后立刻套用探测 / 授权门控；可选热更新当前服务端人数上限 */
@@ -337,7 +395,7 @@ window.getAuthCooldownSec = function () {
     if (n === 0) {
         return 0;
     }
-    return Number.isFinite(n) && n >= 0 && n <= 86400 ? n : 120;
+    return Number.isFinite(n) && n >= 0 && n <= 86400 ? n : 10;
 };
 
 window.setAuthCooldownSec = function (n) {
@@ -408,17 +466,28 @@ window.kickAllClients = function () {
 };
 
 /** 客户端点设备：先走 TCP 敲门，UDP 只作备用。拒绝和冷却不再改走 UDP。 */
-window.requestLanAuthConnect = async function (host, tcpPort) {
+window.cancelLanAuth = function () {
+    const lanAuth = require("./src/nodejs/protocol/lanAuth");
+    return lanAuth.cancelActive();
+};
+
+window.lanAuthWaiting = function (host) {
+    const lanAuth = require("./src/nodejs/protocol/lanAuth");
+    return lanAuth.isWaiting(host);
+};
+
+window.requestLanAuthConnect = async function (host, tcpPort, onSas) {
     const lanAuth = require("./src/nodejs/protocol/lanAuth");
     const port = Number(tcpPort) >= 1 && Number(tcpPort) <= 65535 ? Number(tcpPort) : 54300;
+    const sasCb = typeof onSas === "function" ? onSas : null;
     let grant;
     try {
-        grant = await lanDiscover.requestAuthTcp(host, port);
+        grant = await lanDiscover.requestAuthTcp(host, port, sasCb);
     } catch (e) {
-        if (lanAuth.isDenied(e)) {
+        if (lanAuth.isDenied(e) || lanAuth.isCancelled(e)) {
             throw e;
         }
-        grant = await lanDiscover.requestAuth(host, window.getLanDiscoverPort());
+        grant = await lanDiscover.requestAuth(host, window.getLanDiscoverPort(), sasCb);
     }
     const usePort = grant.tcpPort > 0 ? grant.tcpPort : port;
     return TsUri.format(String(host || ""), usePort, grant.pskB64);

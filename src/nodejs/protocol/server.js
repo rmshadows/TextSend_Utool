@@ -6,6 +6,7 @@ const C = require("./constants");
 const Pairing = require("./pairing");
 const { TsPeer } = require("./peer");
 const { AuthLimiter } = require("./authLimiter");
+const lanAuthGate = require("./lanAuthGate");
 
 function normalizeHost(addr) {
     let h = String(addr || "").trim();
@@ -85,8 +86,54 @@ class TsServer {
     }
 
     _onConnection(sock) {
+        const chunks = [];
+        let settled = false;
+        const take = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            clearTimeout(timer);
+            sock.off("data", onData);
+            sock.off("error", onErr);
+            const prefix = chunks.length ? Buffer.concat(chunks) : null;
+            if (prefix && prefix.length >= 4
+                && prefix[0] === 0x54 && prefix[1] === 0x53 && prefix[2] === 0x41 && prefix[3] === 0x31) {
+                lanAuthGate.acceptTcp(sock, prefix);
+                return;
+            }
+            this._beginSession(sock, prefix);
+        };
+        const onData = (chunk) => {
+            chunks.push(chunk);
+            const all = Buffer.concat(chunks);
+            if (all.length < 4) {
+                return;
+            }
+            take();
+        };
+        const onErr = () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                try {
+                    sock.destroy();
+                } catch (_e) {
+                }
+            }
+        };
+        const timer = setTimeout(take, 400);
+        sock.on("data", onData);
+        sock.on("error", onErr);
+    }
+
+    _beginSession(sock, prefix) {
         const ip = normalizeHost(sock.remoteAddress || "?");
         console.log("Log: 【接入】TCP " + ip + ":" + sock.remotePort);
+        try {
+            sock.pause();
+        } catch (_e) {
+        }
         if (!this.limiter.allow(ip)) {
             console.log("Log: 【拒绝】" + ip + " PIN 失败次数过多，已锁定");
             sock.destroy();
@@ -118,7 +165,14 @@ class TsServer {
         });
         box.peer = peer;
         this.peers.push(peer);
+        if (prefix && prefix.length) {
+            sock.unshift(prefix);
+        }
         peer.start();
+        try {
+            sock.resume();
+        } catch (_e) {
+        }
     }
 
     putLanGrant(host, psk, ttlMs, deviceName) {
@@ -165,12 +219,17 @@ class TsServer {
     }
 
     consumeGrant(host, psk) {
+        this.claimGrant(host, psk);
+    }
+
+    claimGrant(host, psk) {
         const h = normalizeHost(host);
         const g = this.lanGrants.get(h);
-        if (!g || !psk || !g.psk.equals(psk)) {
-            return;
+        if (!g || !psk || !g.psk.equals(psk) || g.expireAt <= Date.now()) {
+            return false;
         }
         this.lanGrants.delete(h);
+        return true;
     }
 
     _purgeGrants() {
