@@ -106,13 +106,12 @@
             @update:checked="onRememberClientChange">记住上次连接</n-checkbox>
           <span v-if="lanDiscover" class="lan-on-hint" title="探测已开；详细选项在「设置」">探测开</span>
         </div>
-        <div class="control-row-nav">
-          <n-button size="small" title="快捷键与用法说明" @click="btnHelp">帮助</n-button>
-          <n-button size="small" title="版本与 Android 下载" @click="btnAbout">关于</n-button>
-        </div>
       </div>
       <div v-if="!mbStore.serverMode && lanDiscover" class="lan-peers">
-        <span class="lan-peers-label">{{ lanPeerLabel }}</span>
+        <div class="lan-peers-title">
+          <span v-if="lanProbing" class="lan-probe-light" title="正在探测" aria-hidden="true"></span>
+          <span class="lan-peers-label">{{ lanPeerLabel }}</span>
+        </div>
         <button v-for="p in lanPeers" :key="p.host + ':' + p.tcpPort" type="button" class="lan-peer"
           :class="{ 'lan-peer--sas': !!authSasByHost[p.host] }"
           :title="lanPeerTitle(p)"
@@ -223,6 +222,29 @@
           </div>
         </n-card>
       </n-modal>
+      <n-modal v-model:show="showWeb">
+        <n-card class="web-card" title="兼容模式" :bordered="false" size="small" role="dialog" aria-modal="true">
+          <div class="web-ways">
+            <button type="button" class="web-chip" :class="{ on: webWay === 'A' }" @click="webWay = 'A'">A 明文</button>
+            <button type="button" class="web-chip" :class="{ on: webWay === 'B' }" @click="webWay = 'B'">B 加密</button>
+            <button type="button" class="web-chip" :class="{ on: webWay === 'C' }" @click="webWay = 'C'">C 证书</button>
+          </div>
+          <div class="web-hint">{{ webHint }}</div>
+          <n-input-number class="web-port" :value="webPort" :show-button="false" size="small"
+            :min="1" :max="65535" placeholder="端口" @update:value="onWebPort" />
+          <n-button type="primary" size="small" class="web-go" @click="toggleWebBridge">{{ webRunning ? "停止" : "启动" }}</n-button>
+          <n-button v-if="webWay === 'C'" size="small" class="web-go web-side" @click="revealWebCa">根证书</n-button>
+          <div class="web-state">{{ webState }}</div>
+          <div class="web-actions">
+            <n-button size="small" @click="copyWebLink">复制链接</n-button>
+            <n-button size="small" @click="openWebLink">浏览器</n-button>
+            <n-button size="small" title="作废当前二维码，换一套会话" @click="refreshWeb">换会话</n-button>
+          </div>
+          <div class="web-hint">用二维码打开，不要手打地址。电脑上 Ctrl+Enter 把输入框发给浏览器；已连上 App 时两边一起发。</div>
+          <img v-if="webQr" class="web-qr" :src="webQr" alt="兼容模式二维码" />
+          <div v-else class="web-qr web-qr--empty">未启动。ts:// 不受影响。</div>
+        </n-card>
+      </n-modal>
       <n-modal v-model:show="showHelp">
         <n-card class="help-card" title="帮助" :bordered="false" size="small" role="dialog" aria-modal="true">
           <pre class="help-text">{{ helpText }}</pre>
@@ -279,6 +301,12 @@ import { useMessage } from 'naive-ui'
 import * as js from "../js/tsc"
 import * as settings from "../js/settings"
 import { ANDROID_DOWNLOAD, openExternalUrl, ensureLinkQrImg } from "../js/links"
+import {
+  headerWebVisible,
+  headerWebRunning,
+  setHeaderHandlers,
+  clearHeaderHandlers,
+} from "../js/headerNav"
 
 
 // 可以在组件中的任意位置访问 `store` 变量 ✨
@@ -420,6 +448,11 @@ const lanPeerLabel = computed(() => {
   }
   return lanPeers.value.length ? "局域网设备（点一下请求授权）" : "正在探测…还没看到其他 TextSend";
 });
+
+/** 和电脑端 / 安卓一样：探测进行中标题前一颗灯慢慢亮灭。 */
+const lanProbing = computed(() =>
+  !!lanDiscover.value && !lanPaused.value && !lanBindError.value
+);
 
 const lanPeerIdCounts = computed(() => {
   const counts = {};
@@ -960,15 +993,47 @@ const btnLaunch = () => {
 const btnLaunchContextMenu = () => {
   lanuchBtnEvent(false);
 }
-const sendCurrentText = () => {
+const webSessionUp = () => mbStore.serverMode
+  && typeof window.webBridgeHasSession === "function"
+  && window.webBridgeHasSession();
+
+const canDeliver = () => mbStore.isConnected || webSessionUp();
+
+const sendCurrentText = async () => {
   const text = tsStore.inputText;
-  if (!mbStore.isConnected || !text || !String(text).trim()) {
+  if (!text || !String(text).trim() || !canDeliver()) {
     return;
   }
-  if (mbStore.serverMode) {
-    window.serverSend(text);
-  } else {
+  if (!mbStore.serverMode) {
     window.clientSend(text);
+    return;
+  }
+  let delivered = 0;
+  if (mbStore.isConnected) {
+    try {
+      const n = Number(await window.serverSend(text)) || 0;
+      if (n > 0) {
+        delivered += n;
+      }
+    } catch (e) {
+      /* 网页桥还能发 */
+    }
+  }
+  if (webSessionUp() && typeof window.webPushText === "function") {
+    const w = Number(window.webPushText(text)) || 0;
+    if (w > 0) {
+      delivered++;
+    } else if (delivered === 0 && w < 0) {
+      window.$message && window.$message.error("文字超过 64KB");
+      return;
+    }
+  }
+  if (delivered > 0) {
+    if (tsStore.inputText === text) {
+      tsStore.setInputValueSync("");
+    }
+  } else {
+    window.$message && window.$message.error(webSessionUp() ? "兼容模式会话已过期" : "没有已连接的客户端");
   }
 }
 
@@ -978,7 +1043,7 @@ const sendSmart = async () => {
     return;
   }
   if (queueItems.value.length) {
-    if (!mbStore.isConnected) {
+    if (!canDeliver()) {
       window.$message.error("未连接");
       return;
     }
@@ -1122,7 +1187,148 @@ const formatSpeed = (n) => {
   return `${(v / 1024 / 1024).toFixed(1)} MB/s`;
 };
 
+const webHint = computed(() => {
+  if (webWay.value === "A") {
+    return "明文，靠扫码令牌。不要传密码。";
+  }
+  if (webWay.value === "C") {
+    return "HTTPS，正文仍加密。根证书可选，不装时浏览器会提示不受信任。";
+  }
+  return "正文加密。三档同时只开一个。";
+});
+
+const webState = computed(() => {
+  if (!webRunning.value) {
+    return "未启动。ts:// 不受影响。";
+  }
+  const way = (typeof window.webBridgeWay === "function" && window.webBridgeWay()) || webWay.value;
+  const port = (typeof window.webBridgePort === "function" && window.webBridgePort()) || webPort.value;
+  if (!webUrl.value) {
+    return "网页 " + way + "  0.0.0.0:" + port + "  ·  会话已过期";
+  }
+  return "网页 " + way + "  0.0.0.0:" + port + "  ·  浏览器 " + webListeners.value;
+});
+
+const onWebPort = (value) => {
+  const n = Number(value);
+  if (Number.isFinite(n) && n >= 1 && n <= 65535) {
+    webPort.value = n;
+  }
+};
+
+const syncHeaderNav = () => {
+  headerWebRunning.value = !!webRunning.value;
+  headerWebVisible.value = !!(mbStore.serverMode || webRunning.value);
+};
+
+const refreshWebUi = () => {
+  const running = typeof window.webBridgeRunning === "function" && !!window.webBridgeRunning();
+  webRunning.value = running;
+  syncHeaderNav();
+  if (!showWeb.value && !running) {
+    return;
+  }
+  const hosts = running && typeof window.webBridgeListeners === "function" ? window.webBridgeListeners() : [];
+  webListeners.value = Array.isArray(hosts) ? hosts.length : 0;
+  const host = tsStore.ipAddr || "127.0.0.1";
+  const url = running && typeof window.webBridgePageUrl === "function" ? (window.webBridgePageUrl(host) || "") : "";
+  if (url !== webUrl.value) {
+    webUrl.value = url;
+    webQr.value = "";
+    if (url) {
+      ensureLinkQrImg(url, (src) => {
+        if (webUrl.value === url) {
+          webQr.value = src || "";
+        }
+      });
+    }
+  }
+};
+
+const openWebBridge = () => {
+  if (typeof window.webBridgeRunning === "function" && window.webBridgeRunning()) {
+    const w = window.webBridgeWay && window.webBridgeWay();
+    const p = window.webBridgePort && window.webBridgePort();
+    if (w === "A" || w === "B" || w === "C") {
+      webWay.value = w;
+    }
+    if (p >= 1 && p <= 65535) {
+      webPort.value = p;
+    }
+  }
+  showWeb.value = true;
+  refreshWebUi();
+};
+
+const toggleWebBridge = async () => {
+  if (webRunning.value) {
+    if (typeof window.stopWebBridge === "function") {
+      await window.stopWebBridge();
+    }
+    refreshWebUi();
+    return;
+  }
+  const p = Number(webPort.value);
+  if (!Number.isInteger(p) || p < 1 || p > 65535) {
+    window.$message && window.$message.error("端口无效");
+    return;
+  }
+  const err = await window.startWebBridge(p, webWay.value);
+  if (err) {
+    window.$message && window.$message.error(String(err));
+  }
+  refreshWebUi();
+};
+
+const copyWebLink = () => {
+  if (!webUrl.value) {
+    window.$message && window.$message.info("先启动，再复制链接");
+    return;
+  }
+  if (typeof window.copyText === "function") {
+    window.copyText(webUrl.value);
+  }
+  window.$message && window.$message.success("已复制链接");
+};
+
+const openWebLink = () => {
+  if (!webUrl.value) {
+    window.$message && window.$message.info("先启动，再打开链接");
+    return;
+  }
+  openExternalUrl(webUrl.value);
+};
+
+const revealWebCa = () => {
+  const runningC = webRunning.value && typeof window.webBridgeWay === "function" && window.webBridgeWay() === "C";
+  if (!runningC) {
+    window.$message && window.$message.info("先用 C 档启动");
+    return;
+  }
+  const p = typeof window.webBridgeRevealCa === "function" ? window.webBridgeRevealCa() : "";
+  if (!p) {
+    window.$message && window.$message.error("还没有根证书");
+    return;
+  }
+  if (typeof window.copyText === "function") {
+    window.copyText(p);
+  }
+  window.$message && window.$message.success("根证书：" + p);
+};
+
+const refreshWeb = () => {
+  if (!webRunning.value || typeof window.refreshWebSession !== "function") {
+    window.$message && window.$message.info("先启动");
+    return;
+  }
+  window.refreshWebSession();
+  webUrl.value = "";
+  refreshWebUi();
+  window.$message && window.$message.success("已换一套会话，请重新扫码");
+};
+
 const pollFile = () => {
+  refreshWebUi();
   if (typeof window.getFileStat !== "function") {
     return;
   }
@@ -1249,7 +1455,7 @@ const sendPastePreview = async () => {
   if (!p || !p.path) {
     return;
   }
-  if (!mbStore.isConnected) {
+  if (!canDeliver()) {
     window.$message.error("未连接");
     return;
   }
@@ -1329,6 +1535,12 @@ const tryConsumePendingTsUri = () => {
 };
 
 onMounted(() => {
+  setHeaderHandlers({
+    web: () => openWebBridge(),
+    help: () => btnHelp(),
+    about: () => btnAbout(),
+  });
+  syncHeaderNav();
   pollFile();
   pushLanState();
   fileTimer = setInterval(pollFile, 250);
@@ -1344,6 +1556,9 @@ onMounted(() => {
   }
 });
 onUnmounted(() => {
+  clearHeaderHandlers();
+  headerWebVisible.value = false;
+  headerWebRunning.value = false;
   window.removeEventListener("textsend-pending-uri", onPendingTsUriEvent);
   window.removeEventListener("keydown", onSessionKey);
   if (fileTimer) {
@@ -1361,7 +1576,10 @@ onUnmounted(() => {
 
 watch(
   () => [mbStore.isConnected, mbStore.connectedCount, mbStore.isServerStart, mbStore.serverMode, tsStore.portNumber],
-  () => pushLanState()
+  () => {
+    syncHeaderNav();
+    pushLanState();
+  }
 );
 
 watch(() => [tsStore.ipAddr, tsStore.portNumber], (now, prev) => {
@@ -1390,6 +1608,13 @@ let portNumber = computed(() => tsStore.portNumber);
 // 是否显示About / 帮助
 let showModal = ref(false);
 let showHelp = ref(false);
+const showWeb = ref(false);
+const webWay = ref("B");
+const webPort = ref(54301);
+const webRunning = ref(false);
+const webUrl = ref("");
+const webQr = ref("");
+const webListeners = ref(0);
 const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.version}
 
 —— 按钮 ——
@@ -1401,7 +1626,8 @@ const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.vers
 · 「切换」：服务端 / 客户端。客户端粘贴 ts:// 后点「连接」。
 · 顶栏「待授权」「已连接」：点开是对话框。先对核对码，再允许 / 拒绝 / 拉黑。对话框打开时 Alt+Y 允许、Alt+N 拒绝、Alt+B 拉黑、Alt+K 踢下线，↑↓ 换蓝框那一台。客户端再点同一台设备取消申请。
 · 「设置」：探测、主动广播、探测口跟随连接口、限流、冷却、黑名单、右键启动人数。
-· 「帮助」：本页。「关于」：版本和手机端下载。
+· 顶栏「帮助」：本页。「关于」：版本和手机端下载。
+· 顶栏「兼容模式」：给浏览器。A 明文、B 加密、C 证书，端口默认 54301，和 ts:// 的 54300 分开，同时只开一档。C 可下根证书。有 App 客户端时文字和文件两边都发；只有网页会话时 Ctrl+Enter 发给浏览器。
 
 —— 连上 ——
 · 选好本机局域网 IP 和端口，点「启动」。左侧出现二维码和 PIN。
@@ -1481,6 +1707,83 @@ try {
 
 .session-card {
   width: min(480px, 92vw);
+}
+
+.web-card {
+  width: min(420px, 92vw);
+}
+
+.web-ways {
+  display: flex;
+  gap: 6px;
+}
+
+.web-chip {
+  flex: 1;
+  height: 32px;
+  border-radius: 10px;
+  border: 1.5px solid var(--ts-accent);
+  background: transparent;
+  color: var(--ts-accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.web-chip.on {
+  background: var(--ts-accent);
+  color: #fff;
+}
+
+.web-hint {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ts-muted);
+}
+
+.web-port {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.web-go {
+  width: 100%;
+}
+
+.web-side {
+  margin-top: 8px;
+}
+
+.web-state {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ts-ink);
+}
+
+.web-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.web-qr {
+  display: block;
+  width: 196px;
+  height: 196px;
+  margin: 10px auto 0;
+  object-fit: contain;
+  background: #fff;
+}
+
+.web-qr--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--ts-muted);
+  text-align: center;
+  padding: 12px;
+  box-sizing: border-box;
 }
 
 .session-empty {
@@ -1617,7 +1920,7 @@ try {
 }
 
 .control-row--secondary {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .control-row-left {
@@ -1628,14 +1931,6 @@ try {
   flex: 1 1 auto;
   min-width: 0;
   margin-right: auto;
-}
-
-.control-row-nav {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  flex: 0 0 auto;
 }
 
 .launch-btn {
@@ -1890,6 +2185,32 @@ try {
   gap: 6px;
   align-items: center;
   padding: 0 2px 6px;
+}
+
+.lan-peers-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.lan-probe-light {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3d7eff;
+  flex: 0 0 auto;
+  animation: lan-probe-breath 1.7s ease-in-out infinite;
+}
+
+@keyframes lan-probe-breath {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .lan-peers-label {

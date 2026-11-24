@@ -5,6 +5,7 @@ const path = require("path");
 const C = require("./protocol/constants");
 const FileNames = require("./protocol/fileNames");
 const profile = require("./profile");
+const webBridge = require("./webbridge/server");
 
 const state = {
     items: [],
@@ -310,14 +311,55 @@ function cancelCurrent() {
     }
 }
 
+function webWanted() {
+    if (profile.currentClient && profile.currentClient.isAlive()) {
+        return false;
+    }
+    return webBridge.isRunning() && webBridge.hasSession();
+}
+
+async function pushWebFile(item, seq, of) {
+    const cancelled = () => state.cancelFlag;
+    let n;
+    try {
+        n = await webBridge.pushFile(item.path, item.tree, item.rel, cancelled, (name, done, total) => {
+            fileIo().onProgress(false, name, done, total, seq, of);
+        });
+    } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        if (msg === "cancelled") {
+            const err = new Error("cancelled");
+            throw err;
+        }
+        throw new Error(msg || "发送失败");
+    }
+    if (n > 0) {
+        return 1;
+    }
+    if (n === -1) {
+        throw new Error("文件超过 20GB");
+    }
+    if (n === -2) {
+        throw new Error("网页收件已满，请在浏览器里清空");
+    }
+    throw new Error("兼容模式会话已过期");
+}
+
 async function sendOne(item, seq, of) {
     const peers = alivePeers();
+    const web = webWanted();
     if (peers.length === 0) {
-        throw new Error("未连接");
+        if (!web) {
+            throw new Error("未连接");
+        }
+        return pushWebFile(item, seq, of);
     }
     const targets = peers.filter((p) => p.supportsFile && p.supportsFile());
     if (targets.length === 0) {
-        throw new Error("对端不支持文件传输");
+        if (!web) {
+            throw new Error("对端不支持文件传输");
+        }
+        return pushWebFile(item, seq, of);
     }
     for (const p of targets) {
         p.prepareOutgoingSend();
@@ -393,6 +435,36 @@ async function sendOne(item, seq, of) {
     }
 }
 
+async function deliverOne(item, seq, of) {
+    const web = webWanted();
+    let sent = 0;
+    try {
+        sent += await sendOne(item, seq, of);
+    } catch (e) {
+        const msg = e && e.message ? e.message : "";
+        const peers = alivePeers().filter((p) => p.supportsFile && p.supportsFile());
+        if (msg === "cancelled" || !web || peers.length === 0) {
+            throw e;
+        }
+    }
+    if (web && sent >= 0) {
+        const peers = alivePeers().filter((p) => p.supportsFile && p.supportsFile());
+        if (peers.length > 0) {
+            try {
+                sent += await pushWebFile(item, seq, of);
+            } catch (e) {
+                if (sent === 0) {
+                    throw e;
+                }
+            }
+        }
+    }
+    if (sent === 0) {
+        throw new Error("发送失败");
+    }
+    return sent;
+}
+
 async function sendOnePath(filePath) {
     const p = String(filePath || "");
     if (!p || !fs.existsSync(p) || !fs.statSync(p).isFile()) {
@@ -413,7 +485,7 @@ async function sendOnePath(filePath) {
     state.busy = true;
     state.cancelFlag = false;
     try {
-        const n = await sendOne(item, 0, 0);
+        const n = await deliverOne(item, 0, 0);
         if (n > 1) {
             pushEvent("ok", item.name + " 已发给 " + n + " 端");
         } else {
@@ -454,7 +526,7 @@ async function sendLoop() {
             const seq = ofNow > 1 ? sentCount + 1 : 0;
             const of = ofNow > 1 ? ofNow : 0;
             try {
-                const n = await sendOne(item, seq, of);
+                const n = await deliverOne(item, seq, of);
                 state.items.shift();
                 sentCount++;
                 lastName = item.name;

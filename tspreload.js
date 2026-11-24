@@ -7,6 +7,9 @@ const fileQueue = require("./src/nodejs/fileQueue");
 const TsUri = require("./src/nodejs/protocol/tsUri");
 const lanDiscover = require("./src/nodejs/protocol/lanDiscover");
 const lanAuthGate = require("./src/nodejs/protocol/lanAuthGate");
+const webBridge = require("./src/nodejs/webbridge/server");
+const FileNames = require("./src/nodejs/protocol/fileNames");
+const ProtocolC = require("./src/nodejs/protocol/constants");
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
@@ -194,6 +197,9 @@ window.setListenPort = function (port) {
     const n = Number(port);
     if (Number.isFinite(n) && n >= 1 && n <= 65535) {
         utools.dbStorage.setItem("textsend.listenPort", n);
+        if (window.getLanDiscoverPortFollow()) {
+            utools.dbStorage.setItem("textsend.lanDiscoverPort", n);
+        }
     }
 };
 
@@ -610,6 +616,111 @@ window.getFileStat = function () {
 
 window.openInboxDir = function () {
     return fileQueue.openInbox();
+};
+
+webBridge.setHooks({
+    onText(text) {
+        console.log("webbridge text: " + text);
+        try {
+            if (typeof utools !== "undefined") {
+                utools.copyText(String(text));
+                if (typeof utools.hideMainWindowTypeString === "function") {
+                    utools.hideMainWindowTypeString(String(text));
+                }
+                if (typeof utools.showNotification === "function") {
+                    utools.showNotification("收到网页文字");
+                }
+            }
+        } catch (e) {
+            console.log("webbridge text hook: " + e);
+        }
+    },
+    onFile(info) {
+        let note = info && info.note ? info.note : ("收到文件 " + (info && info.name ? info.name : ""));
+        if (info && info.clip && info.path && info.size > 0 && info.size <= ProtocolC.CLIPBOARD_IMAGE_MAX
+            && FileNames.isImageName(info.name)) {
+            try {
+                const { clipboard, nativeImage } = require("electron");
+                const img = nativeImage.createFromPath(info.path);
+                if (img && !img.isEmpty()) {
+                    clipboard.writeImage(img);
+                    note = "收到图片 " + info.name + "，已放入剪贴板";
+                }
+            } catch (e) {
+                note = "收到文件 " + info.name;
+            }
+        }
+        console.log(note + (info && info.path ? " " + info.path : ""));
+        try {
+            if (typeof utools !== "undefined" && typeof utools.showNotification === "function") {
+                utools.showNotification(note);
+            }
+        } catch (e) {
+            /* 通知失败时控制台里还有一行 */
+        }
+    },
+});
+
+window.startWebBridge = function (port, way) {
+    return webBridge.start(port, way).then(() => "").catch((e) => (e && e.message ? e.message : String(e)));
+};
+
+window.stopWebBridge = function () {
+    return webBridge.stop();
+};
+
+window.webBridgePageUrl = function (host) {
+    return webBridge.pageUrl(host);
+};
+
+window.webBridgeRunning = function () {
+    return webBridge.isRunning();
+};
+
+window.webBridgeHasSession = function () {
+    return webBridge.hasSession();
+};
+
+window.webBridgeWay = function () {
+    return webBridge.way();
+};
+
+window.webBridgePort = function () {
+    return webBridge.port();
+};
+
+window.webBridgeListeners = function () {
+    return webBridge.listenerHosts();
+};
+
+window.webBridgeCaPath = function () {
+    return webBridge.caPath();
+};
+
+window.webBridgeRevealCa = function () {
+    const p = webBridge.caPath();
+    if (!p) {
+        return "";
+    }
+    try {
+        if (typeof utools !== "undefined" && typeof utools.shellShowItemInFolder === "function") {
+            utools.shellShowItemInFolder(p);
+        } else if (typeof utools !== "undefined" && typeof utools.shellOpenPath === "function") {
+            utools.shellOpenPath(path.dirname(p));
+        }
+    } catch (e) {
+        console.log("webbridge ca: " + e);
+    }
+    return p;
+};
+
+window.refreshWebSession = function () {
+    webBridge.refreshSession();
+    return webBridge.pageUrl("127.0.0.1");
+};
+
+window.webPushText = function (text) {
+    return webBridge.pushText(text);
 };
 
 window.readClipboardImage = function () {
