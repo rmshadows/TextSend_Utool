@@ -1,6 +1,6 @@
 # TextSend_Utools_Plugin
 
-本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.15
+本插件使用 **Vue3 + Pinia + Nodejs** 书写  |  当前版本：5.0.16
 
 ## 传送门
 
@@ -128,18 +128,26 @@ npm run dev
 - 对端 HELLO 没有 `"file"` 会立刻失败（旧 uTools 5.0.7）。
 - 修改 `tspreload.js` 或 `src/nodejs/` 或 `ui/` 后须重新载入插件；构建用 `npm run udev` 或 `npm run build`（会自动拷 `logo.png` → `dist/assets/favicon.png`）。
 
-## 维护说明（5.0.15）
+## 维护说明（5.0.16）
 
 - **发文件**：2026-08-24 修稳（`writeFrameWait` 回压；取消 `cancelEpoch` + `_sendControlWait`）。
 - **二维码**：监听成功后再刷；开服成功自动复制长密钥连接串；点侧栏二维码复制长 key（不再弹放大窗）。
 - **About**：Android 下载 GitHub/Gitee 悬停小码（打开关于时预生成）。
 - **客户端**：可选「记住上次连接」（仅 PIN，默认关）；切回服务端清空连接串输入框。
-- **局域网**：探测（主动广播、探测口跟随连接口、`TSQ1` 询问）/ TSA1 授权走 TCP / 顶栏「待授权」「已连接」点开对话框 / 设置（限流·冷却·黑名单）；改 `tspreload.js`、`src/nodejs/` 或 `ui/` 后须重载插件。
+- **局域网**：探测（主动广播、探测口跟随连接口、`TSQ1` 询问）/ TSA1 授权走 TCP / 「在线」面板（待授权·App·浏览器）/ 设置（限流·冷却·黑名单）；改 `tspreload.js`、`src/nodejs/` 或 `ui/` 后须重载插件。
+- **兼容模式**：发到 / App↔网页互斥 / 网页黑名单；网页收文件进度与取消已接进度条。
 - **配置**：`src/js/settings.js` + `tspreload.js`（`dbStorage`）。
 
 # 更新日志
 
 5.0.0 起为协议 v1（二进制帧 / AES-GCM / `ts://`），与旧 0.0.x JSON 协议不互通。
+
+- 2026.11.28——5.0.16
+  - 对齐 PC：发送目标（只发 App / 只发兼容 / 发给所有），只发 App 严格不进网页
+  - 兼容模式与 App 互斥；兼容网页黑名单（403 + 踢长连接）
+  - 「在线」整合待授权 / App / 浏览器；顶栏 Web 简报；无内容禁用发送；开服锁定 IP/端口
+  - 网页收文件显示进度并可取消（inbox `setWatch` → 进度条 / `abortActive`）
+  - 客户端失败说明细化；底栏「切换」不再变成「发送」
 
 - 2026.11.18——5.0.15
   - 对齐 PC：探测会发询问包，可关主动广播；探测口默认跟着连接端口；已有连接时停广播，授权仍然收

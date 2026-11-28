@@ -15,18 +15,34 @@ function pasteIncoming(text) {
     }
 }
 
+function listenFailMessage(err, port) {
+    const code = err && err.code ? String(err.code) : "";
+    const msg = err && err.message ? String(err.message) : String(err || "");
+    if (code === "EADDRINUSE" || /EADDRINUSE/i.test(msg)) {
+        return "端口 " + port + " 已被占用（本机可能已开着电脑版 TextSend）";
+    }
+    if (code === "EACCES" || /EACCES/i.test(msg)) {
+        return "没有权限监听端口 " + port;
+    }
+    return msg ? ("服务启动失败：" + msg) : "服务启动失败。";
+}
+
 function createTsServer(port, maxConnections = 1, customEnabled = false, customPin = "") {
     closeAllServers();
     profile.startStatus = 0;
-    const server = new TsServer(Number(port), maxConnections, pasteIncoming, fileQueue.fileIo(), {
+    profile.startError = "";
+    const listenPort = Number(port);
+    const server = new TsServer(listenPort, maxConnections, pasteIncoming, fileQueue.fileIo(), {
         customEnabled: !!customEnabled,
         customPin: String(customPin || ""),
     });
     profile.currentServer = server;
     server.listen().then(() => {
         profile.startStatus = 1;
+        profile.startError = "";
     }).catch((e) => {
         console.log("createTsServer: " + e);
+        profile.startError = listenFailMessage(e, listenPort);
         profile.startStatus = 2;
         closeAllServers();
     });

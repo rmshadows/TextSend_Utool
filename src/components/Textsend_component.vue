@@ -12,18 +12,16 @@
       <div class="file-toolbar">
         <n-button size="small" title="左键选文件（最多 50）；右键或 Shift+左键选文件夹"
           @click="btnPickFiles" @contextmenu.prevent="btnPickFolders">文件</n-button>
+        <n-button type="primary" size="small" :disabled="!canSendNow" title="有图片预览先发图；有待发就发文件；否则发输入框里的文字"
+          @click="sendSmart">发送</n-button>
         <n-button size="small" :disabled="!canCancel" title="只停这一轮传输，待发列表还在"
           @click="btnCancelFile">取消</n-button>
         <n-button size="small" :disabled="!canClearQueue" title="清空待发列表（不影响正在传的）"
           @click="btnClearQueue">清空</n-button>
-        <div v-if="mbStore.serverMode && mbStore.isServerStart" class="session-btns">
-          <n-button size="small" :type="authPending.length ? 'primary' : 'default'"
-            title="点开处理授权。先对核对码，再允许、拒绝或拉黑"
-            @click="openAuthDialog">待授权 {{ authPending.length }}</n-button>
-          <n-button size="small"
-            title="点开查看已连接的设备，可踢下线"
-            @click="openClientsDialog">已连接 {{ aliveClients.length }}{{ mbStore.maxConnections > 1 ? ' / ' + mbStore.maxConnections : '' }}</n-button>
-        </div>
+        <n-button v-if="showSessionBtns" size="small" class="online-btn"
+          :type="authPending.length ? 'primary' : 'default'"
+          title="待授权、App 客户端和浏览器会话。点开可允许、拒绝、拉黑、踢下线"
+          @click="openOnlineDialog">{{ onlineBtnText }}</n-button>
         <n-button size="small" class="inbox-btn" title="用资源管理器打开本机「下载/TextSend」"
           @click="btnOpenInbox">下载目录</n-button>
       </div>
@@ -31,11 +29,14 @@
         <n-progress type="line" :percentage="progressPct" :show-indicator="false" :height="5" :border-radius="99" />
         <div class="file-meter-text" :title="progressTitle">{{ progressLabel }}</div>
       </div>
-      <div v-else-if="queueItems.length" class="file-hint">{{ fileBusy ? "发送中" : "待发" }} {{ queueItems.length }}</div>
       <div v-if="queueItems.length" class="file-queue">
-        <div v-for="(it, idx) in queueItems" :key="it.id" class="file-row">
-          <span class="file-name" :title="it.path">{{ fileBusy && idx === 0 ? "发送中 · " : "" }}{{ it.tree ? it.tree + '/' + it.rel : it.name }}</span>
-          <button type="button" class="row-x" :disabled="fileBusy" @click="btnRemove(it.id)">×</button>
+        <div class="file-queue-head">
+          <span>{{ fileBusy ? "发送中" : "待发" }} {{ queueItems.length }}</span>
+        </div>
+        <div v-for="(it, idx) in queueItems" :key="it.id" class="file-row"
+          :class="{ 'file-row--busy': fileBusy && idx === 0 }">
+          <span class="file-name" :title="it.path">{{ it.tree ? it.tree + '/' + it.rel : it.name }}</span>
+          <button type="button" class="row-x" :disabled="fileBusy" title="从待发去掉" @click="btnRemove(it.id)">×</button>
         </div>
       </div>
     </div>
@@ -61,13 +62,15 @@
 
     <div class="control-panel">
       <div class="control-row control-row--main">
-        <div class="ip-wrap" :title="ipAddr">
+        <div class="ip-wrap" :title="mbStore.isServerStart ? (ipAddr + '（运行中不可更改，请先停止）') : ipAddr">
           <n-select :value="ipAddr" :options="ipAddrList" size="small"
+            :disabled="mbStore.isServerStart"
             :render-option="renderIpOption" :render-label="renderIpLabel"
             @update:value="selectOnUpdateValue" @update-show="onIpShow" />
         </div>
-        <div class="port-wrap">
+        <div class="port-wrap" :title="mbStore.isServerStart ? '运行中不可更改端口，请先停止服务' : '监听端口'">
           <n-input-number :value="portNumber" :show-button="false"
+            :disabled="mbStore.isServerStart"
             :validator="portNumberValidator" size="small" :min="1" :max="65535" placeholder="端口"
             :format="portNumberFormator" @update:value="inputNumberUpdate" />
         </div>
@@ -98,6 +101,9 @@
           <n-input v-model:value="customPinDraft" class="custom-pin-input" size="small" maxlength="8"
             placeholder="8位数字" title="先输入 8 位数字，再勾选「固定 PIN」"
             :allow-input="onlyPinDigits" @blur="onCustomPinBlur" />
+          <span class="send-target-label" title="默认发给所有：App 和网页都收到。只发 App：只给已连接的 App，绝不发网页（无客户端则提示，不回落，避免误发）。只发兼容：只给网页。发给所有时，App 服务没开仍可发网页。">发到</span>
+          <n-select class="send-target-select" size="small" :value="sendTargetIndex" :options="sendTargetOptions"
+            :consistent-menu-width="false" @update:value="onSendTargetChange" />
           <span v-if="lanDiscover" class="lan-on-hint" title="探测已开；详细选项在「设置」">探测开</span>
         </div>
         <div v-else class="control-row-left">
@@ -120,57 +126,83 @@
           <small v-if="authSasByHost[p.host]" class="lan-peer-sas">核对 {{ authSasByHost[p.host] }} · 再点取消</small>
         </button>
       </div>
-      <n-modal v-model:show="showAuthPanel">
-        <n-card class="session-card" title="待授权" :bordered="false" size="small" role="dialog" aria-modal="true">
-          <div v-if="!authPending.length" class="session-empty">没有待处理的授权</div>
-          <div v-else class="auth-panel" @click="sessionFocus = 'auth'">
-            <div v-for="(p, i) in authPending" :key="p.host" class="auth-row"
-              :class="{ 'auth-row--on': sessionFocus === 'auth' && i === authIndex }"
-              @click="sessionFocus = 'auth'; authIndex = i">
-              <div class="auth-name" :title="p.host">
-                <div>{{ p.name }}</div>
-                <div class="auth-host">{{ p.host }}<template v-if="p.sas"> · 核对 {{ p.sas }}</template></div>
+      <n-modal v-model:show="showOnlinePanel">
+        <n-card class="session-card" title="在线" :bordered="false" size="small" role="dialog" aria-modal="true">
+          <div class="online-section">
+            <div class="online-section-title">待授权 {{ authPending.length }}</div>
+            <div v-if="!authPending.length" class="session-empty">暂无授权请求</div>
+            <div v-else class="auth-panel">
+              <div v-for="(p, i) in authPending" :key="p.host" class="auth-row"
+                :class="{ 'auth-row--on': sessionFocus === 'auth' && i === authIndex }"
+                @click="sessionFocus = 'auth'; authIndex = i">
+                <div class="auth-name" :title="p.host">
+                  <div>{{ p.name }}</div>
+                  <div class="auth-host">{{ p.host }}<template v-if="p.sas"> · 核对 {{ p.sas }}</template></div>
+                </div>
+                <span class="auth-actions">
+                  <button type="button" class="auth-btn" title="核对码与对方一致后再允许（Alt+Y）"
+                    @click="onAuthDecide(p.host, 'allow')">允许</button>
+                  <button type="button" class="auth-btn" title="拒绝并进入冷却（Alt+N）"
+                    @click="onAuthDecide(p.host, 'deny')">拒绝</button>
+                  <button type="button" class="auth-btn" title="加入黑名单并拒绝（Alt+B）"
+                    @click="onAuthDecide(p.host, 'blacklist')">拉黑</button>
+                </span>
               </div>
-              <span class="auth-actions">
-                <button type="button" class="auth-btn" title="核对码与对方一致后再允许（Alt+Y）"
-                  @click="onAuthDecide(p.host, 'allow')">允许</button>
-                <button type="button" class="auth-btn" title="拒绝并进入冷却（Alt+N）"
-                  @click="onAuthDecide(p.host, 'deny')">拒绝</button>
-                <button type="button" class="auth-btn" title="加入黑名单并拒绝（Alt+B）"
-                  @click="onAuthDecide(p.host, 'blacklist')">拉黑</button>
-              </span>
+              <button v-if="authPending.length > 1" type="button" class="auth-btn auth-btn--all"
+                title="拒绝当前全部请求并分别进入冷却"
+                @click="onAuthDenyAll">全部拒绝</button>
             </div>
-            <button v-if="authPending.length > 1" type="button" class="auth-btn auth-btn--all"
-              title="拒绝当前全部请求并分别进入冷却"
-              @click="onAuthDenyAll">全部拒绝</button>
           </div>
-          <div class="auth-keys">Alt+Y 允许 · Alt+N 拒绝 · Alt+B 拉黑 · ↑↓ 换一台。作用在蓝框那台。</div>
-        </n-card>
-      </n-modal>
-      <n-modal v-model:show="showClientsPanel">
-        <n-card class="session-card" title="已连接" :bordered="false" size="small" role="dialog" aria-modal="true">
-          <div v-if="!aliveClients.length" class="session-empty">当前没有客户端</div>
-          <div v-else class="auth-panel" @click="sessionFocus = 'clients'">
-            <div v-for="(c, i) in aliveClients" :key="c.host + ':' + c.port" class="auth-row"
-              :class="{ 'auth-row--on': sessionFocus === 'clients' && i === clientIndex }"
-              @click="sessionFocus = 'clients'; clientIndex = i">
-              <div class="auth-name"
-                :title="'对端 IP' + (c.name ? ' · 设备名来自授权请求' : '') + '（临时连接口 ' + c.port + '，仅区分同 IP 多开）'">
-                <div>{{ c.label || c.host }}</div>
+          <div class="online-section">
+            <div class="online-section-title">已连接 {{ onlineCount }}{{ onlineCap }}</div>
+            <div v-if="!onlineCount" class="session-empty">还没有客户端</div>
+            <div v-else class="auth-panel">
+              <div v-for="(c, i) in aliveClients" :key="'app:' + c.host + ':' + c.port" class="auth-row"
+                :class="{ 'auth-row--on': sessionFocus === 'clients' && i === clientIndex }"
+                @click="sessionFocus = 'clients'; clientIndex = i">
+                <div class="auth-name"
+                  :title="'App · ' + (c.name ? '设备名来自授权 · ' : '') + '临时连接口 ' + c.port">
+                  <div>{{ c.label || c.host }}</div>
+                  <div class="auth-host">App</div>
+                </div>
+                <span class="auth-actions">
+                  <button type="button" class="auth-btn" :title="'断开 ' + c.host + '（Alt+K）'"
+                    @click="onKick(c.host)">踢下线</button>
+                  <button type="button" class="auth-btn" :title="'拉黑并踢下线 ' + c.host + '（Alt+B）'"
+                    @click="onBlacklistClient(c.host)">拉黑</button>
+                </span>
               </div>
-              <button type="button" class="auth-btn" :title="'断开 ' + c.host + '，服务继续运行（Alt+K）'"
-                @click="onKick(c.host)">踢下线</button>
+              <div v-for="(host, i) in webHosts" :key="'web:' + host + ':' + i" class="auth-row"
+                :class="{ 'auth-row--on': sessionFocus === 'web' && i === webIndex }"
+                @click="sessionFocus = 'web'; webIndex = i">
+                <div class="auth-name" :title="'兼容模式网页 · ' + host">
+                  <div>{{ host }}</div>
+                  <div class="auth-host">浏览器</div>
+                </div>
+                <span class="auth-actions">
+                  <button type="button" class="auth-btn" :title="'断开 ' + host + '（Alt+K）'"
+                    @click="onKickWeb(i, host)">踢下线</button>
+                  <button type="button" class="auth-btn" :title="'加入网页黑名单并断开 ' + host + '（Alt+B）'"
+                    @click="onBlacklistWeb(i, host)">拉黑</button>
+                </span>
+              </div>
+              <button v-if="aliveClients.length > 1" type="button" class="auth-btn auth-btn--all"
+                title="断开所有 App 客户端，服务继续运行"
+                @click="onKickAll">全部踢下线 App</button>
+              <button v-if="webHosts.length > 1" type="button" class="auth-btn auth-btn--all"
+                title="断开全部网页连接，兼容模式继续运行"
+                @click="onKickWebAll">全部踢下线浏览器</button>
             </div>
-            <button v-if="aliveClients.length > 1" type="button" class="auth-btn auth-btn--all"
-              title="断开所有客户端，服务继续运行"
-              @click="onKickAll">全部踢下线</button>
           </div>
-          <div class="auth-keys">Alt+K 踢下线 · Alt+B 拉黑并踢下线 · ↑↓ 换一台。作用在蓝框那台。</div>
+          <div class="auth-keys">Alt+Y 允许 · Alt+N 拒绝 · Alt+B 拉黑 · Alt+K 踢下线 · ↑↓ 换一台。作用在蓝框那台。</div>
         </n-card>
       </n-modal>
       <n-modal v-model:show="showSettings">
         <n-card class="help-card" title="设置" :bordered="false" size="small" role="dialog" aria-modal="true">
           <div class="settings-form">
+            <n-checkbox :checked="draftWebExclusive"
+              title="默认关，两个可以同时开。打开后，开网页会停 App 服务，开 App 服务会停网页。"
+              @update:checked="onDraftWebExclusive">兼容模式与 App 互斥</n-checkbox>
             <n-checkbox :checked="draftLanDiscover"
               title="默认关。打开后可被发现，并允许客户端请求临时授权（须本机点允许）。"
               @update:checked="onDraftLanDiscover">局域网探测</n-checkbox>
@@ -212,7 +244,23 @@
                 @keydown.enter.prevent="commitBlacklistInput" />
               <div class="settings-bl-tip">点条目编辑，右侧 × 整条删除</div>
             </div>
-            <div class="settings-hint">平时请扫码。打开探测后：客户端点设备会进「待授权」，两边先显示同一串核对码，对得上再点允许。授权优先走 TCP。限流/冷却/黑名单防骚扰。默认探测口跟着连接端口。</div>
+            <div class="settings-bl">
+              <div class="settings-bl-title" title="名单内 IP 访问兼容模式网页一律 403；已连上的长连接会被踢掉。和授权黑名单分开。">兼容模式网页黑名单</div>
+              <div class="settings-bl-list">
+                <div v-if="draftWebBlacklistItems.length === 0" class="settings-bl-empty">（空）</div>
+                <div v-for="ip in draftWebBlacklistVisible" :key="'w:' + ip" class="settings-bl-row">
+                  <button type="button" class="settings-bl-ip" :title="'点击编辑 ' + ip"
+                    @click="startWebBlacklistEdit(ip)">{{ ip }}</button>
+                  <button type="button" class="settings-bl-del" title="删除这条"
+                    @click="removeWebBlacklistItem(ip)">×</button>
+                </div>
+              </div>
+              <n-input v-model:value="draftWebBlacklistInput" size="small" placeholder="输入 IP，回车添加"
+                title="只拦兼容模式网页；App 授权另有上面的授权黑名单。也可在「浏览器」里点「拉黑」"
+                @keydown.enter.prevent="commitWebBlacklistInput" />
+              <div class="settings-bl-tip">点条目编辑，右侧 × 整条删除</div>
+            </div>
+            <div class="settings-hint">平时请扫码。打开探测后：客户端点设备会进「待授权」，两边先显示同一串核对码，对得上再点允许。授权优先走 TCP。限流/冷却/黑名单防骚扰。默认探测口跟着连接端口。拉黑 App 只拒 App，拉黑网页只拒兼容模式。</div>
             <div class="settings-actions">
               <n-button size="small" title="探测、授权、端口、固定 PIN、记住的连接回到默认。正在运行的服务不中断。"
                 @click="resetSettings">恢复默认设置</n-button>
@@ -225,14 +273,14 @@
       <n-modal v-model:show="showWeb">
         <n-card class="web-card" title="兼容模式" :bordered="false" size="small" role="dialog" aria-modal="true">
           <div class="web-ways">
-            <button type="button" class="web-chip" :class="{ on: webWay === 'A' }" @click="webWay = 'A'">A 明文</button>
-            <button type="button" class="web-chip" :class="{ on: webWay === 'B' }" @click="webWay = 'B'">B 加密</button>
-            <button type="button" class="web-chip" :class="{ on: webWay === 'C' }" @click="webWay = 'C'">C 证书</button>
+            <button type="button" class="web-chip" :class="{ on: webWay === 'A' }" @click="selectWebWay('A')">A 明文</button>
+            <button type="button" class="web-chip" :class="{ on: webWay === 'B' }" @click="selectWebWay('B')">B 加密</button>
+            <button type="button" class="web-chip" :class="{ on: webWay === 'C' }" @click="selectWebWay('C')">C 证书</button>
           </div>
           <div class="web-hint">{{ webHint }}</div>
           <n-input-number class="web-port" :value="webPort" :show-button="false" size="small"
             :min="1" :max="65535" placeholder="端口" @update:value="onWebPort" />
-          <n-button type="primary" size="small" class="web-go" @click="toggleWebBridge">{{ webRunning ? "停止" : "启动" }}</n-button>
+          <n-button type="primary" size="small" class="web-go" @click="toggleWebBridge">{{ webPowerLabel }}</n-button>
           <n-button v-if="webWay === 'C'" size="small" class="web-go web-side" @click="revealWebCa">根证书</n-button>
           <div class="web-state">{{ webState }}</div>
           <div class="web-actions">
@@ -240,7 +288,7 @@
             <n-button size="small" @click="openWebLink">浏览器</n-button>
             <n-button size="small" title="作废当前二维码，换一套会话" @click="refreshWeb">换会话</n-button>
           </div>
-          <div class="web-hint">用二维码打开，不要手打地址。电脑上 Ctrl+Enter 把输入框发给浏览器；已连上 App 时两边一起发。</div>
+          <div class="web-hint">用二维码打开，不要手打地址。点「发送」或 Ctrl+Enter 按「发到」规则投送。A / B / C 同时只开一档。设置里可开与 App 互斥。</div>
           <img v-if="webQr" class="web-qr" :src="webQr" alt="兼容模式二维码" />
           <div v-else class="web-qr web-qr--empty">未启动。ts:// 不受影响。</div>
         </n-card>
@@ -304,6 +352,7 @@ import { ANDROID_DOWNLOAD, openExternalUrl, ensureLinkQrImg } from "../js/links"
 import {
   headerWebVisible,
   headerWebRunning,
+  headerWebBrief,
   setHeaderHandlers,
   clearHeaderHandlers,
 } from "../js/headerNav"
@@ -402,6 +451,12 @@ const onAutoStartChange = (checked) => {
 
 const customPinEnabled = ref(settings.getCustomPinEnabled());
 const customPinDraft = ref(settings.getCustomPin());
+const sendTargetOptions = [
+  { label: "只发 App", value: 0 },
+  { label: "只发兼容", value: 1 },
+  { label: "发给所有", value: 2 },
+];
+const sendTargetIndex = ref(settings.getSendTargetIndex());
 const rememberClientConnection = ref(settings.getRememberClientConnection());
 const lanDiscover = ref(settings.getLanDiscover());
 const lanPause = ref(settings.getLanDiscoverPause());
@@ -418,8 +473,7 @@ const authBusyHost = ref("");
 let authOp = 0;
 const authPending = ref([]);
 const aliveClients = ref([]);
-const showAuthPanel = ref(false);
-const showClientsPanel = ref(false);
+const showOnlinePanel = ref(false);
 const showSettings = ref(false);
 const maxClients = ref(settings.getMaxClients());
 const draftLanDiscover = ref(settings.getLanDiscover());
@@ -430,6 +484,7 @@ const draftLanPort = ref(settings.getLanDiscoverPort());
 const sessionFocus = ref("auth");
 const authIndex = ref(0);
 const clientIndex = ref(0);
+const webIndex = ref(0);
 const draftMaxClients = ref(settings.getMaxClients());
 const draftAuthRate = ref(settings.getAuthRatePerMin());
 const draftAuthCool = ref(settings.getAuthCooldownSec());
@@ -438,6 +493,13 @@ const draftBlacklistInput = ref("");
 const draftBlacklistEditing = ref("");
 const draftBlacklistVisible = computed(() =>
   draftBlacklistItems.value.filter((ip) => ip !== draftBlacklistEditing.value)
+);
+const draftWebExclusive = ref(settings.getWebAppExclusive());
+const draftWebBlacklistItems = ref([]);
+const draftWebBlacklistInput = ref("");
+const draftWebBlacklistEditing = ref("");
+const draftWebBlacklistVisible = computed(() =>
+  draftWebBlacklistItems.value.filter((ip) => ip !== draftWebBlacklistEditing.value)
 );
 const lanPeerLabel = computed(() => {
   if (lanPaused.value) {
@@ -509,31 +571,27 @@ const pushLanState = () => {
   if (typeof window.listLanAuthPending === "function") {
     const next = window.listLanAuthPending() || [];
     if (!authPending.value.length && next.length) {
-      showClientsPanel.value = false;
-      showAuthPanel.value = true;
       sessionFocus.value = "auth";
+      showOnlinePanel.value = true;
       window.$message && window.$message.info("有授权请求");
     }
     authPending.value = next;
-    if (!next.length) {
-      showAuthPanel.value = false;
-    }
     if (authIndex.value >= next.length) {
       authIndex.value = 0;
     }
   }
   if (typeof window.listAliveClients === "function" && mbStore.serverMode && mbStore.isServerStart) {
     aliveClients.value = window.listAliveClients() || [];
-    if (!aliveClients.value.length) {
-      showClientsPanel.value = false;
-    }
     if (clientIndex.value >= aliveClients.value.length) {
       clientIndex.value = 0;
     }
   } else {
     aliveClients.value = [];
-    showClientsPanel.value = false;
   }
+};
+
+const onDraftWebExclusive = (checked) => {
+  draftWebExclusive.value = !!checked;
 };
 
 const onDraftLanDiscover = (checked) => {
@@ -556,6 +614,7 @@ const onDraftLanFollow = (checked) => {
 };
 
 const openSettings = () => {
+  draftWebExclusive.value = settings.getWebAppExclusive();
   draftLanDiscover.value = settings.getLanDiscover();
   draftLanPause.value = settings.getLanDiscoverPause();
   draftLanAnnounce.value = settings.getLanDiscoverAnnounce();
@@ -571,6 +630,13 @@ const openSettings = () => {
   draftBlacklistItems.value = [...new Set(bl)];
   draftBlacklistInput.value = "";
   draftBlacklistEditing.value = "";
+  const wbl = String(settings.getWebBlacklistText() || "")
+    .split(/[,;\s]+/)
+    .map((s) => normalizeBlacklistHost(s))
+    .filter(Boolean);
+  draftWebBlacklistItems.value = [...new Set(wbl)];
+  draftWebBlacklistInput.value = "";
+  draftWebBlacklistEditing.value = "";
   showSettings.value = true;
 };
 
@@ -613,12 +679,42 @@ function removeBlacklistItem(ip) {
   }
 }
 
+function commitWebBlacklistInput() {
+  const next = normalizeBlacklistHost(draftWebBlacklistInput.value);
+  if (!next) {
+    draftWebBlacklistEditing.value = "";
+    draftWebBlacklistInput.value = "";
+    return;
+  }
+  const edit = draftWebBlacklistEditing.value;
+  let list = draftWebBlacklistItems.value.filter((ip) => ip !== edit && ip !== next);
+  list.push(next);
+  draftWebBlacklistItems.value = list;
+  draftWebBlacklistEditing.value = "";
+  draftWebBlacklistInput.value = "";
+}
+
+function startWebBlacklistEdit(ip) {
+  draftWebBlacklistEditing.value = ip;
+  draftWebBlacklistInput.value = ip;
+}
+
+function removeWebBlacklistItem(ip) {
+  draftWebBlacklistItems.value = draftWebBlacklistItems.value.filter((x) => x !== ip);
+  if (draftWebBlacklistEditing.value === ip) {
+    draftWebBlacklistEditing.value = "";
+    draftWebBlacklistInput.value = "";
+  }
+}
+
 const saveSettings = () => {
   const portN = Number(draftLanPort.value);
   if (!draftLanFollow.value && (!Number.isFinite(portN) || portN < 1 || portN > 65535)) {
     window.$message && window.$message.error("探测端口须为 1–65535");
     return;
   }
+  const turnExclusive = !!draftWebExclusive.value && !settings.getWebAppExclusive();
+  settings.setWebAppExclusive(!!draftWebExclusive.value);
   settings.setLanDiscoverAnnounce(!!draftLanAnnounce.value);
   settings.setLanDiscoverPortFollow(!!draftLanFollow.value);
   if (!draftLanFollow.value && !settings.setLanDiscoverPort(portN) && draftLanDiscover.value) {
@@ -639,6 +735,8 @@ const saveSettings = () => {
   }
   commitBlacklistInput();
   settings.setAuthBlacklistText(draftBlacklistItems.value.join("\n"));
+  commitWebBlacklistInput();
+  settings.setWebBlacklistText(draftWebBlacklistItems.value.join("\n"));
   settings.setLanDiscoverPause(!!draftLanPause.value);
   settings.setLanDiscover(!!draftLanDiscover.value);
   lanAnnounce.value = settings.getLanDiscoverAnnounce();
@@ -647,6 +745,13 @@ const saveSettings = () => {
   lanPause.value = settings.getLanDiscoverPause();
   lanPort.value = settings.getLanDiscoverPort();
   maxClients.value = settings.getMaxClients();
+  if (turnExclusive && mbStore.isServerStart && webRunning.value) {
+    if (typeof window.stopWebBridge === "function") {
+      window.stopWebBridge();
+    }
+    refreshWebUi();
+    window.$message && window.$message.info("已互斥：关掉了兼容模式");
+  }
   // 保存后立刻套用：开/关探测、限流/冷却/黑名单；已开服则热更新人数上限
   if (typeof window.applyLanSettingsNow === "function") {
     const connected = !!(mbStore.isConnected || mbStore.connectedCount > 0);
@@ -677,6 +782,7 @@ const resetSettings = () => {
   autoStartServer.value = settings.getAutoStartServer();
   customPinEnabled.value = settings.getCustomPinEnabled();
   customPinDraft.value = settings.getCustomPin();
+  sendTargetIndex.value = settings.getSendTargetIndex();
   rememberClientConnection.value = settings.getRememberClientConnection();
   lanDiscover.value = settings.getLanDiscover();
   lanPause.value = settings.getLanDiscoverPause();
@@ -690,25 +796,43 @@ const resetSettings = () => {
   window.$message && window.$message.success("已恢复默认设置");
 };
 
+const onSendTargetChange = (v) => {
+  const n = v === 1 || v === 2 ? v : 0;
+  sendTargetIndex.value = n;
+  settings.setSendTargetIndex(n);
+};
+
 function onSessionKey(e) {
-  const authOpen = showAuthPanel.value && authPending.value.length > 0;
-  const clientsOpen = showClientsPanel.value && aliveClients.value.length > 0;
-  if (!authOpen && !clientsOpen) {
+  if (!showOnlinePanel.value) {
     return;
   }
-  const which = sessionFocus.value === "clients" && clientsOpen ? "clients" : (authOpen ? "auth" : "clients");
+  const authOk = authPending.value.length > 0;
+  const clientsOk = aliveClients.value.length > 0;
+  const webOk = webHosts.value.length > 0;
+  if (!authOk && !clientsOk && !webOk) {
+    return;
+  }
+  let which = sessionFocus.value;
+  if (which === "auth" && !authOk) {
+    which = clientsOk ? "clients" : "web";
+  } else if (which === "clients" && !clientsOk) {
+    which = webOk ? "web" : "auth";
+  } else if (which === "web" && !webOk) {
+    which = clientsOk ? "clients" : "auth";
+  }
   const typing = e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable);
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     if (typing) {
       return;
     }
-    const list = which === "auth" ? authPending.value : aliveClients.value;
-    const idx = which === "auth" ? authIndex : clientIndex;
+    const list = which === "auth" ? authPending.value : (which === "web" ? webHosts.value : aliveClients.value);
+    const idx = which === "auth" ? authIndex : (which === "web" ? webIndex : clientIndex);
     if (!list.length) {
       return;
     }
     const step = e.key === "ArrowDown" ? 1 : list.length - 1;
     idx.value = (idx.value + step) % list.length;
+    sessionFocus.value = which;
     e.preventDefault();
     return;
   }
@@ -732,37 +856,67 @@ function onSessionKey(e) {
       if (row) {
         onAuthDecide(row.host, "blacklist");
       }
+    } else if (which === "web") {
+      const host = webHosts.value[webIndex.value];
+      if (host != null) {
+        onBlacklistWeb(webIndex.value, host);
+      }
     } else {
       const row = aliveClients.value[clientIndex.value];
       if (row) {
-        if (typeof window.decideLanAuth === "function") {
-          window.decideLanAuth(row.host, "blacklist");
-        }
-        onKick(row.host);
+        onBlacklistClient(row.host);
       }
     }
     return;
   }
-  if (key === "k" && which === "clients") {
-    const row = aliveClients.value[clientIndex.value];
-    if (!row) {
-      return;
+  if (key === "k") {
+    if (which === "clients") {
+      const row = aliveClients.value[clientIndex.value];
+      if (!row) {
+        return;
+      }
+      e.preventDefault();
+      onKick(row.host);
+    } else if (which === "web") {
+      const host = webHosts.value[webIndex.value];
+      if (host == null) {
+        return;
+      }
+      e.preventDefault();
+      onKickWeb(webIndex.value, host);
     }
-    e.preventDefault();
-    onKick(row.host);
   }
 }
 
-const openAuthDialog = () => {
-  showClientsPanel.value = false;
-  sessionFocus.value = "auth";
-  showAuthPanel.value = true;
+const openOnlineDialog = () => {
+  refreshWebUi();
+  if (authPending.value.length) {
+    sessionFocus.value = "auth";
+  } else if (aliveClients.value.length) {
+    sessionFocus.value = "clients";
+  } else if (webHosts.value.length) {
+    sessionFocus.value = "web";
+  } else {
+    sessionFocus.value = "auth";
+  }
+  showOnlinePanel.value = true;
 };
 
-const openClientsDialog = () => {
-  showAuthPanel.value = false;
-  sessionFocus.value = "clients";
-  showClientsPanel.value = true;
+const onBlacklistClient = (host) => {
+  const h = String(host || "").trim();
+  if (h && typeof window.getAuthBlacklistText === "function" && typeof window.setAuthBlacklistText === "function") {
+    const next = normalizeBlacklistHost(h);
+    const list = String(window.getAuthBlacklistText() || "")
+      .split(/[,;\s]+/)
+      .map((s) => normalizeBlacklistHost(s))
+      .filter(Boolean);
+    if (next && !list.includes(next)) {
+      list.push(next);
+      window.setAuthBlacklistText(list.join("\n"));
+    }
+  }
+  onKick(h);
+  window.$message && window.$message.success("已拉黑并踢下线 " + h);
 };
 
 const onAuthDecide = (host, action) => {
@@ -993,23 +1147,121 @@ const btnLaunch = () => {
 const btnLaunchContextMenu = () => {
   lanuchBtnEvent(false);
 }
+const showWeb = ref(false);
+const webWay = ref("B");
+const webPort = ref(54301);
+const webRunning = ref(false);
+const webUrl = ref("");
+const webQr = ref("");
+const webListeners = ref(0);
+const webHosts = ref([]);
+
 const webSessionUp = () => mbStore.serverMode
   && typeof window.webBridgeHasSession === "function"
   && window.webBridgeHasSession();
 
-const canDeliver = () => mbStore.isConnected || webSessionUp();
+const currentRoute = () => {
+  if (typeof window.routeSend === "function") {
+    return window.routeSend();
+  }
+  return {
+    app: !!mbStore.isConnected,
+    web: webSessionUp(),
+    block: null,
+  };
+};
+
+const canDeliver = () => {
+  if (!mbStore.serverMode) {
+    return !!mbStore.isConnected;
+  }
+  const r = currentRoute();
+  return !r.block && !!(r.app || r.web);
+};
+
+const showSessionBtns = computed(() =>
+  mbStore.serverMode && (mbStore.isServerStart || webRunning.value)
+);
+
+const onlineCount = computed(() => aliveClients.value.length + webListeners.value);
+
+const onlineCap = computed(() => {
+  if (!mbStore.isServerStart || webListeners.value > 0 || mbStore.maxConnections <= 1) {
+    return "";
+  }
+  return " / " + mbStore.maxConnections;
+});
+
+const onlineBtnText = computed(() => {
+  const pending = authPending.value.length;
+  const online = onlineCount.value;
+  if (online === 0 && pending === 0 && !mbStore.isServerStart && !webRunning.value) {
+    return "在线 —";
+  }
+  if (pending > 0) {
+    return "待授权 " + pending + " · 在线 " + online;
+  }
+  return "在线 " + online;
+});
+
+const webActiveWay = computed(() => {
+  if (!webRunning.value || typeof window.webBridgeWay !== "function") {
+    return "";
+  }
+  const w = window.webBridgeWay();
+  return w === "A" || w === "B" || w === "C" ? w : "";
+});
+
+const webBrief = computed(() => {
+  if (!webRunning.value) {
+    return "";
+  }
+  const way = webActiveWay.value || "?";
+  const p = typeof window.webBridgePort === "function" ? Number(window.webBridgePort()) : 0;
+  const port = Number.isFinite(p) && p > 0 ? p : webPort.value;
+  const sess = typeof window.webBridgeHasSession === "function" && window.webBridgeHasSession();
+  if (!sess) {
+    return "Web " + way + " :" + port + " 过期";
+  }
+  return "Web " + way + " :" + port + " ×" + webListeners.value;
+});
+
+const webPowerLabel = computed(() => {
+  if (!webRunning.value) {
+    return "启动";
+  }
+  if (webActiveWay.value && webActiveWay.value !== webWay.value) {
+    return "切换到 " + webWay.value;
+  }
+  return "停止";
+});
 
 const sendCurrentText = async () => {
   const text = tsStore.inputText;
-  if (!text || !String(text).trim() || !canDeliver()) {
+  if (!text || !String(text).trim()) {
     return;
   }
   if (!mbStore.serverMode) {
+    if (!mbStore.isConnected) {
+      return;
+    }
     window.clientSend(text);
+    if (tsStore.inputText === text) {
+      tsStore.setInputValueSync("");
+    }
+    return;
+  }
+  const route = currentRoute();
+  if (route.block) {
+    window.$message && window.$message.error(route.block);
+    return;
+  }
+  if (!route.app && !route.web) {
+    window.$message && window.$message.error("没有已连接的客户端");
     return;
   }
   let delivered = 0;
-  if (mbStore.isConnected) {
+  if (route.app) {
     try {
       const n = Number(await window.serverSend(text)) || 0;
       if (n > 0) {
@@ -1019,7 +1271,7 @@ const sendCurrentText = async () => {
       /* 网页桥还能发 */
     }
   }
-  if (webSessionUp() && typeof window.webPushText === "function") {
+  if (route.web && typeof window.webPushText === "function") {
     const w = Number(window.webPushText(text)) || 0;
     if (w > 0) {
       delivered++;
@@ -1033,7 +1285,7 @@ const sendCurrentText = async () => {
       tsStore.setInputValueSync("");
     }
   } else {
-    window.$message && window.$message.error(webSessionUp() ? "兼容模式会话已过期" : "没有已连接的客户端");
+    window.$message && window.$message.error(route.block || (webSessionUp() ? "兼容模式会话已过期" : "没有已连接的客户端"));
   }
 }
 
@@ -1044,7 +1296,7 @@ const sendSmart = async () => {
   }
   if (queueItems.value.length) {
     if (!canDeliver()) {
-      window.$message.error("未连接");
+      window.$message.error("尚未连接，无法发送");
       return;
     }
     if (fileBusy.value) {
@@ -1056,6 +1308,11 @@ const sendSmart = async () => {
     } catch (err) {
       window.$message.error(String(err && err.message ? err.message : err));
     }
+    return;
+  }
+  const text = tsStore.inputText;
+  if (!text || !String(text).trim()) {
+    window.$message && window.$message.info("请输入文字，或添加待发文件后再发送");
     return;
   }
   sendCurrentText();
@@ -1076,16 +1333,14 @@ const onInputKeydown = (e) => {
 const btnChangeMode = () => {
   if (mbStore.disableChangeModeBtn) {
     console.log("按钮已禁用。");
-  } else if (mbStore.isConnected) {
-    sendSmart();
+    return;
+  }
+  const toClient = mbStore.serverMode;
+  mbStore.changeServerMode();
+  if (toClient) {
+    prefillClientConnection();
   } else {
-    const toClient = mbStore.serverMode;
-    mbStore.changeServerMode();
-    if (toClient) {
-      prefillClientConnection();
-    } else {
-      tsStore.setInputValueSync("");
-    }
+    tsStore.setInputValueSync("");
   }
 }
 const btnAbout = () => {
@@ -1189,24 +1444,27 @@ const formatSpeed = (n) => {
 
 const webHint = computed(() => {
   if (webWay.value === "A") {
-    return "明文，靠扫码令牌。不要传密码。";
+    return "明文，靠扫码令牌。和 B、C 不能同时开。";
   }
   if (webWay.value === "C") {
-    return "HTTPS，正文仍加密。根证书可选，不装时浏览器会提示不受信任。";
+    return "HTTPS，正文仍加密。根证书可选，不装时浏览器会提示不受信任。和 A、B 不能同时开。";
   }
-  return "正文加密。三档同时只开一个。";
+  return "正文加密。和 A、C 不能同时开。";
 });
 
 const webState = computed(() => {
   if (!webRunning.value) {
     return "未启动。ts:// 不受影响。";
   }
-  const way = (typeof window.webBridgeWay === "function" && window.webBridgeWay()) || webWay.value;
+  const active = webActiveWay.value || webWay.value;
   const port = (typeof window.webBridgePort === "function" && window.webBridgePort()) || webPort.value;
-  if (!webUrl.value) {
-    return "网页 " + way + "  0.0.0.0:" + port + "  ·  会话已过期";
+  if (active !== webWay.value) {
+    return "当前在跑 " + active + "（:" + port + "）。在此启动会关掉它。";
   }
-  return "网页 " + way + "  0.0.0.0:" + port + "  ·  浏览器 " + webListeners.value;
+  if (!webUrl.value) {
+    return "网页 " + active + "  0.0.0.0:" + port + "  ·  会话已过期";
+  }
+  return "网页 " + active + "  0.0.0.0:" + port + "  ·  浏览器 " + webListeners.value;
 });
 
 const onWebPort = (value) => {
@@ -1219,17 +1477,22 @@ const onWebPort = (value) => {
 const syncHeaderNav = () => {
   headerWebRunning.value = !!webRunning.value;
   headerWebVisible.value = !!(mbStore.serverMode || webRunning.value);
+  headerWebBrief.value = webBrief.value || "";
 };
 
 const refreshWebUi = () => {
   const running = typeof window.webBridgeRunning === "function" && !!window.webBridgeRunning();
   webRunning.value = running;
   syncHeaderNav();
+  const hosts = running && typeof window.webBridgeListeners === "function" ? window.webBridgeListeners() : [];
+  webHosts.value = Array.isArray(hosts) ? hosts.slice() : [];
+  webListeners.value = webHosts.value.length;
+  if (webIndex.value >= webHosts.value.length) {
+    webIndex.value = 0;
+  }
   if (!showWeb.value && !running) {
     return;
   }
-  const hosts = running && typeof window.webBridgeListeners === "function" ? window.webBridgeListeners() : [];
-  webListeners.value = Array.isArray(hosts) ? hosts.length : 0;
   const host = tsStore.ipAddr || "127.0.0.1";
   const url = running && typeof window.webBridgePageUrl === "function" ? (window.webBridgePageUrl(host) || "") : "";
   if (url !== webUrl.value) {
@@ -1243,6 +1506,35 @@ const refreshWebUi = () => {
       });
     }
   }
+};
+
+const selectWebWay = (mark) => {
+  webWay.value = mark === "A" || mark === "C" ? mark : "B";
+};
+
+const onKickWeb = (index, host) => {
+  if (typeof window.webBridgeDropListener === "function") {
+    window.webBridgeDropListener(index, host);
+  }
+  refreshWebUi();
+};
+
+const onBlacklistWeb = (index, host) => {
+  if (typeof window.addWebBlacklist === "function") {
+    window.addWebBlacklist(host);
+  } else {
+    onKickWeb(index, host);
+  }
+  refreshWebUi();
+  window.$message && window.$message.success("已拉黑 " + host);
+};
+
+const onKickWebAll = () => {
+  if (typeof window.webBridgeDropAllListeners === "function") {
+    window.webBridgeDropAllListeners();
+  }
+  refreshWebUi();
+  window.$message && window.$message.success("已断开全部浏览器");
 };
 
 const openWebBridge = () => {
@@ -1261,7 +1553,8 @@ const openWebBridge = () => {
 };
 
 const toggleWebBridge = async () => {
-  if (webRunning.value) {
+  const active = webActiveWay.value;
+  if (webRunning.value && active && active === webWay.value) {
     if (typeof window.stopWebBridge === "function") {
       await window.stopWebBridge();
     }
@@ -1273,9 +1566,17 @@ const toggleWebBridge = async () => {
     window.$message && window.$message.error("端口无效");
     return;
   }
-  const err = await window.startWebBridge(p, webWay.value);
-  if (err) {
-    window.$message && window.$message.error(String(err));
+  const r = await window.startWebBridge(p, webWay.value);
+  if (!r || r.ok === false) {
+    window.$message && window.$message.error(String(r && r.err ? r.err : r || "启动失败"));
+  } else {
+    if (r.stoppedApp) {
+      mbStore.setServerStop();
+      qrStore.setQrImgDefaultValue();
+      window.$message && window.$message.success("已互斥：关掉了 App 服务");
+    } else if (active && active !== webWay.value) {
+      window.$message && window.$message.success("已切到 " + webWay.value + "，请重新扫码");
+    }
   }
   refreshWebUi();
 };
@@ -1401,6 +1702,31 @@ const onDragLeave = () => {
 const pastePreview = ref(null);
 const showPasteBig = ref(false);
 const pasteBigSrc = ref("");
+
+const hasSendPayload = computed(() => {
+  if (pastePreview.value) {
+    return true;
+  }
+  if (queueItems.value.length) {
+    return true;
+  }
+  const t = tsStore.inputText;
+  return !!(t && String(t).trim());
+});
+
+/** 依赖连接态 / 发到 / 待发内容，避免按钮状态卡住 */
+const canSendNow = computed(() => {
+  void webRunning.value;
+  void webListeners.value;
+  void sendTargetIndex.value;
+  void mbStore.isConnected;
+  void mbStore.connectedCount;
+  void mbStore.isServerStart;
+  void aliveClients.value.length;
+  void hasSendPayload.value;
+  return hasSendPayload.value && canDeliver();
+});
+
 const pasteSizeText = computed(() => {
   const p = pastePreview.value;
   if (!p) {
@@ -1544,7 +1870,12 @@ onMounted(() => {
   pollFile();
   pushLanState();
   fileTimer = setInterval(pollFile, 250);
-  lanTimer = setInterval(pushLanState, 1000);
+  lanTimer = setInterval(() => {
+    pushLanState();
+    if (mbStore.serverMode || webRunning.value || showWeb.value || showOnlinePanel.value) {
+      refreshWebUi();
+    }
+  }, 1000);
   window.addEventListener("textsend-pending-uri", onPendingTsUriEvent);
   window.addEventListener("keydown", onSessionKey);
   const hasPendingUri = typeof window.peekPendingTsUri === "function" && !!window.peekPendingTsUri();
@@ -1559,6 +1890,7 @@ onUnmounted(() => {
   clearHeaderHandlers();
   headerWebVisible.value = false;
   headerWebRunning.value = false;
+  headerWebBrief.value = "";
   window.removeEventListener("textsend-pending-uri", onPendingTsUriEvent);
   window.removeEventListener("keydown", onSessionKey);
   if (fileTimer) {
@@ -1608,38 +1940,31 @@ let portNumber = computed(() => tsStore.portNumber);
 // 是否显示About / 帮助
 let showModal = ref(false);
 let showHelp = ref(false);
-const showWeb = ref(false);
-const webWay = ref("B");
-const webPort = ref(54301);
-const webRunning = ref(false);
-const webUrl = ref("");
-const webQr = ref("");
-const webListeners = ref(0);
 const helpText = `TextSend uTools  ·  局域网即时投送  ·  ${mbStore.version}
 
 —— 按钮 ——
 · 「启动」左键：最多 1 人。右键：最多 N 人（设置里改，默认 7）。再点是停止。
-· 「发送」：有图片预览先发图；有待发就发文件；否则发输入框里的文字。
+· 「发送」：有图片预览先发图；有待发就发文件；否则发输入框里的文字。只开兼容模式也能发。
 · 「文件」左键选文件；右键或 Shift+左键选文件夹。选完先进待发，点「发送」才传。
 · 「取消」：停这一轮。待发还在。
 · 「清空」：清掉待发列表，不影响正在传的。
-· 「切换」：服务端 / 客户端。客户端粘贴 ts:// 后点「连接」。
-· 顶栏「待授权」「已连接」：点开是对话框。先对核对码，再允许 / 拒绝 / 拉黑。对话框打开时 Alt+Y 允许、Alt+N 拒绝、Alt+B 拉黑、Alt+K 踢下线，↑↓ 换蓝框那一台。客户端再点同一台设备取消申请。
-· 「设置」：探测、主动广播、探测口跟随连接口、限流、冷却、黑名单、右键启动人数。
+· 「切换」：服务端 / 客户端。发送只用顶栏「发送」。客户端粘贴 ts:// 后点「连接」。
+· 「在线」：待授权、App 和浏览器在同一张列表。先对核对码，再允许 / 拒绝 / 拉黑。对话框打开时 Alt+Y 允许、Alt+N 拒绝、Alt+B 拉黑、Alt+K 踢下线，↑↓ 换蓝框那一台。客户端再点同一台设备取消申请。
+· 「设置」：探测、主动广播、探测口跟随连接口、限流、冷却、授权黑名单、兼容模式网页黑名单、与 App 互斥、右键启动人数。
 · 顶栏「帮助」：本页。「关于」：版本和手机端下载。
-· 顶栏「兼容模式」：给浏览器。A 明文、B 加密、C 证书，端口默认 54301，和 ts:// 的 54300 分开，同时只开一档。C 可下根证书。有 App 客户端时文字和文件两边都发；只有网页会话时 Ctrl+Enter 发给浏览器。
+· 顶栏「兼容模式」：给浏览器。A 明文、B 加密、C 证书，端口默认 54301，和 ts:// 的 54300 分开，同时只开一档。切档再点「切换到 X」会关掉当前档。C 可下根证书。点「发送」或 Ctrl+Enter 按「发到」规则投送。
 
 —— 连上 ——
 · 选好本机局域网 IP 和端口，点「启动」。左侧出现二维码和 PIN。
-· 可勾选「启动即开服」 / 「固定 PIN」（默认关）。
+· 可勾选「启动即开服」 / 「固定 PIN」（默认关）。「发到」默认发给所有；只发 App（绝不进网页，无客户端则提示）/ 只发兼容 / 发给所有。
 · 点「切换」到客户端：粘贴 ts://IP/kPIN（端口可省略），再点「连接」。
 · 也可在 uTools 主搜索框直接粘贴 ts://… ，选「用 TextSend 连接」会自动打开并连接。
 · 「局域网探测」（默认关）：点设备请求临时授权（免输 PIN，须对方在「待授权」允许）。两边会显示同一串核对码，对得上再允许。再点同一台取消。
 · 连接和探测默认都用 54300，探测口默认跟着连接端口。连接和授权是 TCP，发现设备是 UDP。防火墙若只放了 TCP，还要放行 UDP 54300。「有连接时关闭」默认开，「主动广播」默认开。
 
-—— 待授权 / 已连接 / 设置 ——
-· 顶栏点「待授权」「已连接」打开对话框，再允许 / 拒绝 / 拉黑，或踢下线。
-· 「设置」：右键启动上限、授权限流（默认 3 次/分·IP）、拒绝冷却（默认 10 秒）、黑名单。
+—— 在线 / 设置 ——
+· 顶栏点「在线」打开对话框，再允许 / 拒绝 / 拉黑，或踢下线。
+· 「设置」：右键启动上限、授权限流（默认 3 次/分·IP）、拒绝冷却（默认 10 秒）、授权黑名单、兼容模式网页黑名单、与 App 互斥（默认关）。
 
 —— 左键 / 右键不一样 ——
 · 「启动」左键最多 1 人；右键最多 N 人（N 在设置，默认 7）。
@@ -1694,15 +2019,25 @@ try {
   margin-left: auto;
 }
 
-.session-btns {
+.online-btn {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.session-btns + .inbox-btn {
+.online-btn + .inbox-btn {
   margin-left: 0;
+}
+
+.online-section + .online-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ts-line);
+}
+
+.online-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ts-ink);
+  margin-bottom: 4px;
 }
 
 .session-card {
@@ -1792,13 +2127,12 @@ try {
   padding: 8px 0 4px;
 }
 
-.file-meter,
-.file-hint {
+.file-meter {
   margin-top: 8px;
 }
 
-.file-meter-text,
-.file-hint {
+.file-meter-text {
+  margin-top: 4px;
   font-size: 12px;
   color: var(--ts-muted);
   overflow: hidden;
@@ -1806,22 +2140,44 @@ try {
   white-space: nowrap;
 }
 
-.file-meter-text {
-  margin-top: 4px;
+.file-queue {
+  margin-top: 8px;
+  max-height: 96px;
+  overflow: auto;
+  border: 1px solid var(--ts-line);
+  border-radius: 8px;
+  background: var(--ts-chip);
+  padding: 4px;
 }
 
-.file-queue {
-  margin-top: 6px;
-  max-height: 72px;
-  overflow: auto;
+.file-queue-head {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ts-muted);
 }
 
 .file-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 22px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-size: 12px;
+  color: var(--ts-ink);
+}
+
+.file-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.file-row--busy {
+  background: color-mix(in srgb, var(--ts-accent) 10%, transparent);
+  color: var(--ts-accent);
 }
 
 .file-name {
@@ -1832,16 +2188,22 @@ try {
 }
 
 .row-x {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
   border: 0;
-  background: none;
+  border-radius: 4px;
+  background: transparent;
   color: var(--ts-muted);
   cursor: pointer;
   font-size: 16px;
-  line-height: 1;
-  padding: 0 2px;
+  line-height: 22px;
+  padding: 0;
+  text-align: center;
 }
 
 .row-x:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
   color: var(--ts-danger);
 }
 
@@ -1992,6 +2354,18 @@ try {
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.05em;
   }
+}
+
+.send-target-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.send-target-select {
+  flex: 0 0 112px;
+  width: 112px;
 }
 
 .control-row :deep(.n-button) {

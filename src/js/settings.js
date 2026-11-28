@@ -230,6 +230,46 @@ export function setAuthBlacklistText(text) {
     }
 }
 
+export function getSendTargetIndex() {
+    if (typeof window.getSendTargetIndex === "function") {
+        const n = Number(window.getSendTargetIndex());
+        return n === 1 || n === 2 ? n : 0;
+    }
+    return 2;
+}
+
+export function setSendTargetIndex(index) {
+    if (typeof window.setSendTargetIndex === "function") {
+        window.setSendTargetIndex(index);
+    }
+}
+
+export function getWebAppExclusive() {
+    if (typeof window.getWebAppExclusive === "function") {
+        return !!window.getWebAppExclusive();
+    }
+    return false;
+}
+
+export function setWebAppExclusive(v) {
+    if (typeof window.setWebAppExclusive === "function") {
+        window.setWebAppExclusive(!!v);
+    }
+}
+
+export function getWebBlacklistText() {
+    if (typeof window.getWebBlacklistText === "function") {
+        return String(window.getWebBlacklistText() || "");
+    }
+    return "";
+}
+
+export function setWebBlacklistText(text) {
+    if (typeof window.setWebBlacklistText === "function") {
+        window.setWebBlacklistText(text);
+    }
+}
+
 export function getRememberClientConnection() {
     if (typeof window.getRememberClientConnection === "function") {
         return !!window.getRememberClientConnection();

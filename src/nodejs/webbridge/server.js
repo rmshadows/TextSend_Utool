@@ -55,7 +55,7 @@ function appVersion() {
     } catch (e) {
         /* 插件清单读不到时用当前发行号 */
     }
-    return "5.0.15";
+    return "5.0.16";
 }
 
 function staticRoot() {
@@ -419,7 +419,38 @@ function onRequest(req, res) {
     });
 }
 
+function isBlacklisted(req) {
+    try {
+        const sendPrefs = require("../sendPrefs");
+        return sendPrefs.isWebBlacklisted(remoteHost(req));
+    } catch (e) {
+        return false;
+    }
+}
+
+/** 踢掉已在黑名单里的网页长连接 */
+function dropBlacklisted() {
+    let list;
+    try {
+        const sendPrefs = require("../sendPrefs");
+        list = state.clients.filter((c) => sendPrefs.isWebBlacklisted(c.host));
+    } catch (e) {
+        return;
+    }
+    for (const c of list) {
+        try {
+            c.write(sse("bye", "blocked"));
+        } catch (e) {
+            /* 踢的时候写失败无所谓 */
+        }
+        drop(c);
+    }
+}
+
 async function handle(req, res) {
+    if (isBlacklisted(req)) {
+        return text(res, 403, "blocked");
+    }
     const url = new URL(req.url || "/", "http://127.0.0.1");
     const pathname = url.pathname || "/";
     if (pathname === "/" || pathname === "/index.html") {
@@ -1024,6 +1055,31 @@ function drop(client) {
     client.close();
 }
 
+/** 断开一条网页长连接。下标对不上时按地址断开第一条。 */
+function dropListener(index, host) {
+    const list = state.clients.slice();
+    let hit = null;
+    if (Number.isInteger(index) && index >= 0 && index < list.length && list[index].host === host) {
+        hit = list[index];
+    } else {
+        hit = list.find((c) => c.host === host) || null;
+    }
+    if (!hit) {
+        return false;
+    }
+    try {
+        hit.write(sse("bye", "kicked"));
+    } catch (e) {
+        /* 踢的时候写失败无所谓 */
+    }
+    drop(hit);
+    return true;
+}
+
+function dropAllListeners() {
+    dropClients("kicked");
+}
+
 class SseClient {
     constructor(req, res) {
         this.req = req;
@@ -1073,6 +1129,9 @@ module.exports = {
     port,
     listenerCount,
     listenerHosts,
+    dropListener,
+    dropAllListeners,
+    dropBlacklisted,
     caPath,
     pageUrl,
     start,

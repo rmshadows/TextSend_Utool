@@ -1,6 +1,6 @@
 {
   "name": "textsend-utools",
-  "version": "5.0.15",
+  "version": "5.0.16",
   "private": true,
   "scripts": {
     "start": "node ./node_modules/vite/bin/vite.js",

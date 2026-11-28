@@ -2,6 +2,8 @@
 
 const profile = {
     startStatus: -1,
+    /** 最近一次服务端 / 客户端启动失败原因（给 UI 提示） */
+    startError: "",
     clearText: false,
     currentServer: null,
     currentClient: null,

@@ -3,6 +3,8 @@ import { ref } from "vue";
 /** 顶栏右侧按钮与主界面联动。 */
 export const headerWebVisible = ref(false);
 export const headerWebRunning = ref(false);
+/** 运行中简报，如 Web B :54301 ×1 */
+export const headerWebBrief = ref("");
 
 const handlers = {
   web: null,

@@ -132,6 +132,25 @@ function pause(id) {
     }
 }
 
+/** 本机点取消：中止进行中的网页上传，半截仍留在磁盘供续传。 */
+function abortActive() {
+    let name = "";
+    let n = 0;
+    for (const part of parts.values()) {
+        if (part.aborted) {
+            continue;
+        }
+        part.aborted = true;
+        closeChannel(part);
+        name = label(part);
+        n++;
+    }
+    if (n > 0 && watch && watch.aborted) {
+        watch.aborted(name);
+    }
+    return n;
+}
+
 function finish(id) {
     const part = parts.get(id);
     if (!part) {
@@ -263,6 +282,7 @@ module.exports = {
     begin,
     chunk,
     pause,
+    abortActive,
     finish,
     discardAll,
 };

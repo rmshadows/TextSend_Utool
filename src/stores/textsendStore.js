@@ -62,12 +62,8 @@ export const useTextsendStore = defineStore('textsend', {
          * @returns String
          */
         getChangeModeBtnText() {
-            const mbStore = useMainbodyStore();
-            if (mbStore.isConnected) {
-                return "发送";
-            } else {
-                return "切换";
-            }
+            // 发送只用顶栏「发送」；这里只负责服务端 / 客户端切换
+            return "切换";
         },
     },
     actions: {

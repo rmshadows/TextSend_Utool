@@ -6,6 +6,8 @@ const C = require("./protocol/constants");
 const FileNames = require("./protocol/fileNames");
 const profile = require("./profile");
 const webBridge = require("./webbridge/server");
+const webBridgeInbox = require("./webbridge/inbox");
+const sendPrefs = require("./sendPrefs");
 
 const state = {
     items: [],
@@ -300,8 +302,20 @@ function clearQueue() {
     return n;
 }
 
+function clearIncomingProgress() {
+    if (state.progress && state.progress.incoming) {
+        state.progress = null;
+        state.speed = 0;
+    }
+}
+
 function cancelCurrent() {
     state.cancelFlag = true;
+    try {
+        webBridgeInbox.abortActive();
+    } catch (e) {
+        /* ignore */
+    }
     for (const p of alivePeers()) {
         try {
             p.cancelFile();
@@ -311,11 +325,24 @@ function cancelCurrent() {
     }
 }
 
-function webWanted() {
-    if (profile.currentClient && profile.currentClient.isAlive()) {
-        return false;
-    }
-    return webBridge.isRunning() && webBridge.hasSession();
+/** 网页桥收文件进度接到同一套进度条 / 取消按钮 */
+function wireWebInbox() {
+    webBridgeInbox.setWatch({
+        progress(name, done, total) {
+            fileIo().onProgress(true, name, done, total, 1, 1);
+        },
+        finished() {
+            clearIncomingProgress();
+        },
+        aborted(name) {
+            clearIncomingProgress();
+            pushEvent("err", name ? ("已停止网页传输 " + name) : "已停止网页传输");
+        },
+        paused(name) {
+            clearIncomingProgress();
+            pushEvent("err", name ? ("手机已停止 " + name) : "手机已停止传输");
+        },
+    });
 }
 
 async function pushWebFile(item, seq, of) {
@@ -345,21 +372,15 @@ async function pushWebFile(item, seq, of) {
     throw new Error("兼容模式会话已过期");
 }
 
+/** 只发给 App 端；网页走 deliverOne 里的 route.web */
 async function sendOne(item, seq, of) {
     const peers = alivePeers();
-    const web = webWanted();
     if (peers.length === 0) {
-        if (!web) {
-            throw new Error("未连接");
-        }
-        return pushWebFile(item, seq, of);
+        throw new Error("未连接");
     }
     const targets = peers.filter((p) => p.supportsFile && p.supportsFile());
     if (targets.length === 0) {
-        if (!web) {
-            throw new Error("对端不支持文件传输");
-        }
-        return pushWebFile(item, seq, of);
+        throw new Error("对端不支持文件传输");
     }
     for (const p of targets) {
         p.prepareOutgoingSend();
@@ -436,31 +457,32 @@ async function sendOne(item, seq, of) {
 }
 
 async function deliverOne(item, seq, of) {
-    const web = webWanted();
+    const route = sendPrefs.routeSend();
+    if (route.block) {
+        throw new Error(route.block);
+    }
     let sent = 0;
-    try {
-        sent += await sendOne(item, seq, of);
-    } catch (e) {
-        const msg = e && e.message ? e.message : "";
-        const peers = alivePeers().filter((p) => p.supportsFile && p.supportsFile());
-        if (msg === "cancelled" || !web || peers.length === 0) {
-            throw e;
+    if (route.app) {
+        try {
+            sent += await sendOne(item, seq, of);
+        } catch (e) {
+            const msg = e && e.message ? e.message : "";
+            if (msg === "cancelled" || !route.web) {
+                throw e;
+            }
         }
     }
-    if (web && sent >= 0) {
-        const peers = alivePeers().filter((p) => p.supportsFile && p.supportsFile());
-        if (peers.length > 0) {
-            try {
-                sent += await pushWebFile(item, seq, of);
-            } catch (e) {
-                if (sent === 0) {
-                    throw e;
-                }
+    if (route.web) {
+        try {
+            sent += await pushWebFile(item, seq, of);
+        } catch (e) {
+            if (sent === 0) {
+                throw e;
             }
         }
     }
     if (sent === 0) {
-        throw new Error("发送失败");
+        throw new Error(route.block || "发送失败");
     }
     return sent;
 }
@@ -594,6 +616,8 @@ function openInbox() {
     return dir;
 }
 
+wireWebInbox();
+
 module.exports = {
     snapshot,
     addFiles,
@@ -609,4 +633,5 @@ module.exports = {
     openInbox,
     attachPeer,
     fileIo,
+    wireWebInbox,
 };

@@ -8,6 +8,7 @@ const TsUri = require("./src/nodejs/protocol/tsUri");
 const lanDiscover = require("./src/nodejs/protocol/lanDiscover");
 const lanAuthGate = require("./src/nodejs/protocol/lanAuthGate");
 const webBridge = require("./src/nodejs/webbridge/server");
+const sendPrefs = require("./src/nodejs/sendPrefs");
 const FileNames = require("./src/nodejs/protocol/fileNames");
 const ProtocolC = require("./src/nodejs/protocol/constants");
 const os = require("os");
@@ -60,6 +61,9 @@ window.getIpAddr = function () {
 };
 
 window.startServer = function (port, maxConnections = 1) {
+    if (sendPrefs.getWebAppExclusive() && webBridge.isRunning()) {
+        webBridge.stop();
+    }
     const customEnabled = !!utools.dbStorage.getItem("textsend.customPinEnabled");
     const customPin = String(utools.dbStorage.getItem("textsend.customPin") || "");
     server.createTsServer(port, maxConnections, customEnabled, customPin);
@@ -124,6 +128,10 @@ window.startSuccessful = function () {
 
 window.setStartStatus = function (value) {
     profile.startStatus = value;
+};
+
+window.getStartError = function () {
+    return String(profile.startError || "");
 };
 
 window.getPin = function () {
@@ -350,6 +358,7 @@ window.resetTextsendSettings = function () {
     utools.dbStorage.setItem("textsend.authBlacklist", "");
     utools.dbStorage.setItem("textsend.listenPort", 54300);
     utools.dbStorage.removeItem("textsend.listenIp");
+    sendPrefs.resetDefaults();
     lanDiscover.stop();
     lanAuthGate.clearPending(true);
     syncAuthGateConfig();
@@ -422,6 +431,51 @@ window.setAuthBlacklistText = function (text) {
     const list = String(text || "").split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
     writeAuthBlacklist(list);
     syncAuthGateConfig();
+};
+
+window.getSendTargetIndex = function () {
+    return sendPrefs.getSendTargetIndex();
+};
+
+window.setSendTargetIndex = function (index) {
+    return sendPrefs.setSendTargetIndex(index);
+};
+
+window.getWebAppExclusive = function () {
+    return sendPrefs.getWebAppExclusive();
+};
+
+window.setWebAppExclusive = function (on) {
+    sendPrefs.setWebAppExclusive(!!on);
+};
+
+window.getWebBlacklistText = function () {
+    return sendPrefs.getWebBlacklistText();
+};
+
+window.setWebBlacklistText = function (text) {
+    sendPrefs.setWebBlacklistText(text);
+    webBridge.dropBlacklisted();
+};
+
+window.addWebBlacklist = function (host) {
+    const h = String(host || "").trim().toLowerCase().replace(/^::ffff:/, "");
+    if (!h) {
+        return false;
+    }
+    const list = sendPrefs.readWebBlacklist();
+    if (list.includes(h)) {
+        webBridge.dropBlacklisted();
+        return false;
+    }
+    list.push(h);
+    sendPrefs.writeWebBlacklist(list);
+    webBridge.dropBlacklisted();
+    return true;
+};
+
+window.routeSend = function () {
+    return sendPrefs.routeSend();
 };
 
 syncAuthGateConfig();
@@ -662,7 +716,19 @@ webBridge.setHooks({
 });
 
 window.startWebBridge = function (port, way) {
-    return webBridge.start(port, way).then(() => "").catch((e) => (e && e.message ? e.message : String(e)));
+    let stoppedApp = false;
+    if (sendPrefs.getWebAppExclusive()) {
+        const s = profile.currentServer;
+        if (s && s.running) {
+            window.stopServer();
+            stoppedApp = true;
+        }
+    }
+    return webBridge.start(port, way).then(() => ({ ok: true, stoppedApp })).catch((e) => ({
+        ok: false,
+        err: e && e.message ? e.message : String(e),
+        stoppedApp,
+    }));
 };
 
 window.stopWebBridge = function () {
@@ -691,6 +757,14 @@ window.webBridgePort = function () {
 
 window.webBridgeListeners = function () {
     return webBridge.listenerHosts();
+};
+
+window.webBridgeDropListener = function (index, host) {
+    return webBridge.dropListener(index, host);
+};
+
+window.webBridgeDropAllListeners = function () {
+    webBridge.dropAllListeners();
 };
 
 window.webBridgeCaPath = function () {

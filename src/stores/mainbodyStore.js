@@ -12,7 +12,7 @@ export const useMainbodyStore = defineStore('mainbody', {
         return {
             // 所有这些属性都将自动推断出它们的类型
             appName: "Textsend uTools 插件",
-            version: "5.0.15",
+            version: "5.0.16",
             author: "Ryan Yim",
             serverMode: true, // 服务状态：服务端或者客户端
             // 链接状态从utools preload查询来
@@ -211,12 +211,26 @@ export const useMainbodyStore = defineStore('mainbody', {
                     qrStore.copyPskUri(tsStore.ipAddr, tsStore.portNumber);
                     break;
                 } else if (stat == 2) {
-                    errorHandler("服务启动失败。");
+                    const detail = typeof window.getStartError === "function" ? window.getStartError() : "";
+                    errorHandler(detail || "服务启动失败。");
+                    this.setServerStop();
+                    useQrStore().setQrImgDefaultValue();
                     break;
                 }
                 await new Promise((resolve) => {
                     setTimeout(resolve, gap);
                 });
+            }
+            if (!success && this.startGen === gen && this.isServerStart) {
+                // 超时仍未成功：收回「停止」假状态
+                errorHandler("服务启动超时。");
+                try {
+                    await window.stopServer();
+                } catch (e) {
+                    /* ignore */
+                }
+                this.setServerStop();
+                useQrStore().setQrImgDefaultValue();
             }
             if (this.startGen === gen) {
                 window.setStartStatus(-1);
@@ -254,10 +268,8 @@ export const useMainbodyStore = defineStore('mainbody', {
                     success = false;
                     isClientTimeout = true;
                     this.clientSocketStat = 2;
-                    if (!success) {
-                        // 失败，弹窗
-                        errorHandler("客户端连接失败。");
-                    }
+                    const detail = typeof window.getStartError === "function" ? window.getStartError() : "";
+                    errorHandler(detail || "客户端连接失败。");
                 }
                 // 等待超时
                 await new Promise((resolve, reject) => {
@@ -266,6 +278,9 @@ export const useMainbodyStore = defineStore('mainbody', {
             }
             // 用户已点断开 / 换了一次连接：不要再 stop 一次把新会话干掉
             if (!this.serverMode && !success && sessionId === this.clientSessionId) {
+                if (this.clientSocketStat === 0) {
+                    errorHandler("连接超时。请确认对端在线，且网络与防火墙允许访问该端口。");
+                }
                 this.clientStop();
             }
             if (sessionId === this.clientSessionId) {

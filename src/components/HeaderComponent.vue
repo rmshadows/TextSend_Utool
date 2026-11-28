@@ -14,10 +14,13 @@
       <n-button
         v-if="headerWebVisible"
         size="small"
+        class="header-web-btn"
         :type="headerWebRunning ? 'primary' : 'default'"
-        title="浏览器兼容模式。A 明文 / B 加密 / C 证书，端口默认 54301，和 ts:// 分开"
+        :title="headerWebRunning
+          ? (headerWebBrief || '兼容模式运行中')
+          : '浏览器兼容模式。A 明文 / B 加密 / C 证书，端口默认 54301，和 ts:// 分开'"
         @click="runHeader('web')"
-      >{{ headerWebRunning ? "兼容中" : "兼容模式" }}</n-button>
+      >{{ headerWebRunning ? (headerWebBrief || "兼容中") : "兼容模式" }}</n-button>
       <n-button size="small" title="快捷键与用法说明" @click="runHeader('help')">帮助</n-button>
       <n-button size="small" title="版本与 Android 下载" @click="runHeader('about')">关于</n-button>
     </div>
@@ -31,6 +34,7 @@ import { nudgeZoom, applyZoom, zoomLabel } from "../js/zoom.js";
 import {
   headerWebVisible,
   headerWebRunning,
+  headerWebBrief,
   runHeader,
 } from "../js/headerNav.js";
 
@@ -98,5 +102,14 @@ const onZoomReset = () => {
   text-align: center;
   cursor: ns-resize;
   color: var(--ts-muted);
+}
+
+.header-web-btn {
+  max-width: 168px;
+  :deep(.n-button__content) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>
